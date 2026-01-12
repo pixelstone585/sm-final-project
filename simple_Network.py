@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchrl as rl
 from torchrl.data import TensorDictReplayBuffer
 from torchrl.data.replay_buffers import LazyMemmapStorage
@@ -18,6 +19,7 @@ class Network(nn.Module):
         self.conv2=nn.Conv2d(in_channels=32,out_channels=1,kernel_size=5,stride=1)
         conv2Out=self._calcConvOutObj(pool1Out,self.conv2)
         self.relu=nn.ReLU()
+        self.sigmoid=nn.Sigmoid()
         self.flatten=nn.Flatten()
         self.linear1=nn.Linear(int(conv2Out[0]*conv2Out[1]),128)
         self.linear2=nn.Linear(128,outDims)
@@ -29,11 +31,12 @@ class Network(nn.Module):
         x=self.relu(x)
         x=self.maxPool(x)
         x=self.conv2(x)
-        #TODO add pooling layer
         x=self.flatten(x)
         x=self.linear1(x)
         x=self.relu(x)
         x=self.linear2(x)
+        #x=self.sigmoid(x)
+        x=torch.nn.functional.sigmoid(x) #work-around for inplace oparation breaking computaion graph
         return x
     
     def _calcPoolOutObj(self,in_size,pool_layer):
@@ -89,108 +92,102 @@ class Network(nn.Module):
             print("[WARNING] convolution output (size: "+str(out_size)+") has one or more non integer dimentions")
 
         return out_size
-
-
-class NetworkPair(nn.Module):
-    def __init__(self,inputChannels,outDims,input_size):
-        super().__init__()
-
-        self.online=Network(inputChannels,outDims,input_size)
-        self.target = Network(inputChannels, outDims,input_size)
-
-        self.target.load_state_dict(self.online.state_dict()) #copy online paramaters to target network
-
-        #disable learning for trget network
-        for p in self.target.parameters():
-            p.requires_grad =False
-
-    def forward(self,state,use_target=False):
-        if(use_target):
-            return self.target(state)
-        else:
-            return self.online(state)
-
-
-
-
-
+    
 
 class drone_brain():
 
 
-    def __init__(self,explore_chance,explore_decay,explore_min,lr,input_size):
-        self.explore_chance=explore_chance
+    def __init__(self,explore_factor,explore_decay,explore_min,lr,input_size):
+
+        self.net=Network(inChannels=1,outDims=13,input_size=input_size)
+        self.optimizer = torch.optim.Adam(params=self.net.parameters(),lr=lr)
+
+        self.rewards=[]
+        self.action_probs=[]
+        self.lifetime_rewards=[]
+
+        self.explore_factor=explore_factor
         self.explore_decay=explore_decay
         self.explore_min=explore_min
-
-        self.memory=TensorDictReplayBuffer(storage= LazyMemmapStorage(100000,device=torch.device("cpu")))
-        self.recall_batchSize=32
-
-        self.net=NetworkPair(inputChannels=1,outDims=6,input_size=input_size)
-        self.optimizer = torch.optim.Adam(params=self.net.online.parameters(),lr=lr)
-        self.loss_fn=torch.nn.SmoothL1Loss()
-
-        self.burn = 1e4 # num of expiriences before training
-        self.learn_interval = 3 #update paramaters every x expiriences
-        self.sync_interval = 14 # sync every x expiriences
-
-        self.save_interval =5e5
 
         self.curr_step=0
 
 
     def act(self,state):
 
-        #explore
-        if(np.random.rand() < self.explore_chance):
-            random_move=np.random.rand(3,1)
-            random_rotate=np.random.rand(3,1)
-            ret=np.concatenate(random_move,random_rotate)
+        probs=self.net.forward(state)
+        probs=probs.squeeze()
 
-        #exploite
-        else:
-            ret=self.net(state)
+        explore_modifier=torch.full(size=[13],fill_value=self.explore_factor)
+        keep_idx=torch.argmax(probs)
+        explore_modifier[keep_idx]=1
 
+        probs=probs*explore_modifier
 
-        #exploration rate decay
-        self.explore_chance *= self.explore_decay
-        self.explore_chance=min(self.explore_min,self.explore_chance)
-
-        self.curr_step+=1
-
-        return ret
-
-
-    def cache(self,state,next_state,action,reward,is_done):
-
-        state=torch.tensor(state)
-        next_state=torch.tensor(next_state)
-        action=torch.tensor([action])
-        reward=torch.tensor([reward])
-        is_done=torch.tensor([is_done])
-
-        self.memory.add(TensorDict({"state":state,"next_sate":next_state,"action":action,"reward":reward,"is_done":is_done}),batch_size=[])
-
-    def learn(self,final_state):
-        reward=self.rewardFunc(final_state)
+        if(probs.sum()==0): #fix for if the network put out all zeros
+            probs+=0.1
+        action_raw=0
+        try:
+            action_raw=torch.multinomial(probs,1,replacement=True)
+        except:
+            print("we've erred!") #for debuging, print probs if error in action selection
+            print(probs)
+        action_formatted=F.one_hot(action_raw,num_classes=13)
+        action=self.classDecode(action_raw)
         
 
+        self.curr_step+=1
+        self.action_probs.append(torch.sum(action_formatted*probs))
 
+        return action
+    
+    
+    #log reward for last action, to be run after proccing the results of act()
+    def analize_state(self,state):
+        reward=self.rewardFunc(state)
+        self.rewards.append(reward)
+        return reward
+    
     def rewardFunc(self,next_state):
         # +1 to reward if reached the end, -1 to reward if crashed
         # main part, sd = goal distance from start, cd = current distance to goal. reward calulation: (sd-cd)/sd=r
         # so when cd -> 0, r -> 1
         return (1 if next_state.is_sucesssful else 0) + (-1 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)
-
-    def update_online(self,td_estimate,td_target):
-        loss=self.loss_fn(td_estimate,td_target)
+    
+    #no clue if any of this actually works but lets hope for the best
+    def learn(self):
+        loss=self.calcLoss(self.action_probs,self.rewards)
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        return loss.item()
 
-    def sync_target(self):
-        self.net.target.load_state_dict(self.net.online.state_dict())
+        #log rewards for this epoch and clear memeory
+        self.lifetime_rewards.append(self.rewards)
+        self.rewards=[]
+        self.action_probs=[]
+        #decay explore
+        self.explore_factor-=self.explore_decay
+        self.explore_factor=max(self.explore_factor,self.explore_min)
+    
+    def calcLoss(self,action_likleyhoods,rewards):
+        #-mean(log(chances of choosing what we chose)*rewards(discounted))
+        loss=[]
+        
+        for probs,reward in zip(action_likleyhoods,rewards):
+            loss.append((-torch.mean(torch.log(probs)*reward)).reshape(1))
+
+        return torch.cat(loss).sum()
+
+
+    
+    def calc_discounted(self,gamma):
+        ret =np.zeros(len(self.rewards))
+        running_value=0
+        for i in reversed(range(len(self.rewards))): #itirate over rewards in reversed order
+            running_value=self.rewards[i]+gamma*running_value
+            ret[i]=running_value #add discounted reward to ret in appropriate index
+        return ret
+        
 
     def save(self):
         path="somthing"
@@ -199,11 +196,9 @@ class drone_brain():
             path
         )
         print("backup created")
-
     
-
     def classDecode(self,chosenAction): #chosen action: number in range 1-13
         map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, -1, 0, 0, 0, 0]),3:np.array([0, 0, 0, 10, 0, 0]),4:np.array([0, 0, 0, -10, 0, 0]),5:np.array([0, 0, 0, 0, 0, 1]),6:np.array([0, 0, 0, 0, 0, -1]),7:np.array([0, 0, 0, 0, 10, 0]),8:np.array([0, 0, 0, 0, -10, 0]),9:np.array([0, 0, 1, 0, 0, 0]),10:np.array([0, 0, -1, 0, 0, 0]),11:np.array([-1, 0, 0, 0, 0, 0]),12:np.array([1, 0, 0, 0, 0, 0]),13:np.array([0, 0, 0, 0, 0, 0])}
         #     w                              s                               left                           right                             e                              q                               up                              down                             space                          shift                            a                                 d                               no action
-        return map[chosenAction]
+        return map[chosenAction.item()+1]
 

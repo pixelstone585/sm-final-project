@@ -13,33 +13,37 @@ loadPrcFileData("", "win-size 480 360")#set window size
 drone=Drone()
 engine=Engine(drone,debugCam=False,sensor_range=50)
 
-scene =Scene()
+base_scene =Scene()
 testModule= Module()
 
-scene.setStartPos(np.array([0,-5,0]))
+base_scene.setStartPos(np.array([0,-5,0]))
 #drone.setPos(np.array([0,-5,0]))
 #wall=Wall(np.array([10,0,0]))
-scene.setStartRot(np.array([0,0,0]))
+base_scene.setStartRot(np.array([0,0,0]))
 #drone.setRot(np.array([0,0,0]))
 
 wall=Wall(np.array([10,100,1]))
-wall.setPos(np.array([-1,0,-2]))
-scene.addWall(wall)
+wall.setPos(np.array([0,-10,0]))
+base_scene.addWall(wall)
 
 wall=Wall(np.array([10,100,1]))
-wall.setPos(np.array([-1,0,9]))
-scene.addWall(wall)
+wall.setPos(np.array([0,-10,10]))
+base_scene.addWall(wall)
 
 wall=Wall(np.array([1,100,10]))
-wall.setPos(np.array([-2,0,-1]))
-scene.addWall(wall)
+wall.setPos(np.array([0,-10,0]))
+base_scene.addWall(wall)
 
 wall=Wall(np.array([1,100,10]))
-wall.setPos(np.array([9,0,-1]))
-scene.addWall(wall)
+wall.setPos(np.array([10,-10,0]))
+base_scene.addWall(wall)
 #engine.addWall(wall,True)
 
-wall=Wall(np.array([10,1,5]))
+wall=Wall(np.array([10,1,10]))
+wall.setPos(np.array([0,-7,0]))
+base_scene.addWall(wall)
+
+"""wall=Wall(np.array([10,1,5]))
 wall.setPos(np.array([-1,5,-1]))
 scene.addWall(wall)
 
@@ -49,15 +53,22 @@ scene.addWall(wall)
 
 obs=mover(np.array([1,1,1]))
 obs.setPos(np.array([10,0,0]))
-#scene.addObstacle(obs)
+#scene.addObstacle(obs)"""
 
-scene.setGoal(np.array([0,15,0]))
+base_scene.setGoal(np.array([0,40,0]))
+f=open(r"level_modules/half_bottom.txt")
+testModule._unpackJson(json.loads(f.read()))
+f.close()
+base_scene.addModule(testModule)
+
 #engine.addObstacle(obs,True)
-scene1=Scene()
+scene=Scene()
 
-LEVEL_LENGTH=2
-
-scene1=compile_random_scene("level_modules",LEVEL_LENGTH)
+"""scene.setGoal(np.array([10,10,10]))
+f=open(r"tmp.txt")
+testModule._unpackJson(json.loads(f.read()))
+f.close()
+scene.addModule(testModule)"""
 
 
 #drone.setPos(np.array([0,-15,0]))
@@ -83,18 +94,18 @@ engine.addRuler(20)
 
 SENSOR_DATA_SIZE=[40,30]
 
-brain=drone_brain(explore_factor=0.4,explore_decay=0.01,explore_min=0.05,lr=0.1,input_size=SENSOR_DATA_SIZE)
-best_reward=-2
-
-torch.autograd.set_detect_anomaly(True)
-
+#brain=drone_brain(explore_factor=0.4,explore_decay=0.01,explore_min=0.05,lr=0.1,input_size=SENSOR_DATA_SIZE)
+#best_reward=-2
+rando = compile_random_scene("level_modules",3)
+#torch.autograd.set_detect_anomaly(True)
+#engine.lazyLoadScene(base_scene,debug=False)
 def gameLoop(engine,brain):
-    engine.loadScene(scene1,debug=False)
+    engine.loadScene(rando,debug=False)
     engine.drone.setPos(np.array([4,0,4]))
+    #engine.goal=np.array([0,100,0])
     #engine.drone.setPos(np.array([6,3,6]))
     stop = False
     undoDelay=False
-    generate_new=False
     while not stop:
         engine.tick()
         engine.updateCam()
@@ -105,20 +116,19 @@ def gameLoop(engine,brain):
 
         has_coll=engine.cheackCollision()
         if(has_coll):
-            #print("crash!")
-            stop=True
+            print("crash!")
+            #stop=True
 
         if engine.getGoalDist() <=0:
             print("Success!")
-            stop=True
-            generate_new=True
+            #stop=True
 
         #generate state object from game data
         currState=State(engine.getDepthBuffer(*SENSOR_DATA_SIZE),has_coll,engine.getGoalDist() <=0,engine.getGoalDist(),engine.getGoalDistFromStart())
-        reward=brain.analize_state(currState)
+        #reward=brain.analize_state(currState)
         #best_reward=max(best_reward,reward)
-        #tmp=simulate_network(engine) #network interface here
-        tmp=brain.act(currState)
+        tmp=simulate_network(engine) #network interface here
+        #tmp=brain.act(currState)
         tmp=tmp.squeeze()
         if(startMover(engine)):
             #engine.addObstacle(obs,showCollider=True)
@@ -128,8 +138,8 @@ def gameLoop(engine,brain):
             engine.setDevTools(True)
 
         if(saveScene(engine)):
-            dat=engine.scene.saveAsModule()
-            f=open(r"tmp.txt","w")
+            dat=engine.scene.saveAsModule(offset=np.array([0,20,0]))
+            f=open(r"mistake.txt","w")
             f.write(json.dumps(dat))
             f.close()
 
@@ -142,32 +152,11 @@ def gameLoop(engine,brain):
         engine.drone.move(np.clip(tmp[:3],-0.1,0.1))
         engine.drone.rotate(np.clip(tmp[3:],-0.5,0.5))
 
-        #time.sleep(0.016666)
-    brain.learn()
+        time.sleep(0.016666)
+    #brain.learn()
     engine.unloadScene()
-    return generate_new
 
-epochs=30
-best_reward=-2
-best_score_display=TextColumn("Best Reward: {task.fields[best_reward]}")
-explore_factor_display=TextColumn("Explore Factor: {task.fields[explore_factor]}")
-
-bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),best_score_display,explore_factor_display)
-bar_task=bar.add_task("training...",total=epochs,best_reward="N/A",explore_factor=brain.explore_factor)
-bar.start()
-for epoch in range(epochs):
-    generate_new=gameLoop(engine,brain)
-    best_reward=max(best_reward,max(brain.lifetime_rewards[-1]))
-    bar.update(bar_task,advance=1,best_reward=round(best_reward,2),explore_factor=brain.explore_factor)
-    if generate_new:
-        scene1=compile_random_scene("level_modules",LEVEL_LENGTH)
-
-bar.stop()
-rewards=[]
-for x in brain.lifetime_rewards:
-    rewards+=x
-plt.plot(rewards)
-plt.show()
+gameLoop(engine,"dummy value")
 
 engine.destroy() #DO NOT REMOVE prevents spyder from entering a loop
 

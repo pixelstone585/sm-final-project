@@ -8,7 +8,6 @@ from direct.showbase.Loader import Loader
 from direct.gui.DirectEntry import DirectEntry
 
 import numpy as np
-print("G")
 from PIL import Image
 
 import time
@@ -17,8 +16,9 @@ import matplotlib.pyplot as plt
 
 import math
 import json
-import sys
+import os
 import copy
+import random
 
 from abc import ABC,abstractmethod
 
@@ -121,6 +121,8 @@ class Wall():
 		self.setPos(np.array(dict["pos"]))
 		self.scale=np.array(dict["scale"])
 		self.rotaion=np.array(dict["rot"])
+		self.collNode=CollisionNode("wall")
+		self.collNode.addSolid(CollisionBox(LPoint3f(*(self.scale/2)),*(self.scale/2)))#create collider (0,0) at corner
 
 
 class Module:
@@ -203,12 +205,13 @@ class Scene:
 		for x in module.walls:
 			self.walls.append(copy.deepcopy(x))
 			self.walls[-1].position=self.walls[-1].position+module.getOffset()
-		for x in module.obstacles:
-			self.obstacles.append(copy.deepcopy(x))
-			self.obstacles[-1].position=self.obstacles[-1].position+module.getOffset()
+		#for x in module.obstacles:
+			#self.obstacles.append(copy.deepcopy(x))
+			#self.obstacles[-1].position=self.obstacles[-1].position+module.getOffset()
 
-	def saveAsModule(self):
+	def saveAsModule(self,offset=np.array([0,0,0])):
 		tmpmod=Module()
+		tmpmod.offset=offset
 		for wall in self.walls:
 			tmpmod.addWall(wall)
 		print("saved!")
@@ -371,7 +374,7 @@ class Engine(ShowBase):
 			self.goalRender.detachNode()
 	def addRuler(self,length):
 		self.ruler=self.loader.loadModel(modelPath="models/box")
-		self.ruler.setPos(0,length/2,0)
+		self.ruler.setPos(1,length/2,1)
 		self.ruler.setScale(1,length,1)
 		self.ruler.reparentTo(self.render)
 		self.ruler.setColor(0,0.82745098039,0.98823529411,1)
@@ -417,7 +420,6 @@ class Engine(ShowBase):
 		depth_image.shape = (self.depthTex.getYSize(), self.depthTex.getXSize(), self.depthTex.getNumComponents())
 		depth_image = np.flipud(depth_image)
 		#depth_image = depth_image / depth_image.max()
-
 		#resize
 		if width >0 and hight >0:
 			tmpimg=Image.fromarray(depth_image.squeeze())
@@ -427,6 +429,20 @@ class Engine(ShowBase):
 		#rerender frame with goal
 		#self.graphicsEngine.renderFrame()
 		return depth_image
+	
+	#load all object in scene, without setting as currently loaded scene (for development use only, objects loaded using this function will not be saved)
+	def lazyLoadScene(self, scene : Scene, debug =False,showGoal=False):
+		for x in scene.walls:
+			self.addWall(x,debug)
+
+		for x in scene.obstacles:
+			self.addObstacle(x,debug)
+
+		self.drone.setPos(scene.startPos)
+		self.drone.setRot(scene.startRot)
+
+		self.addGoal(scene.goal,doesRender=showGoal)
+
 
 	def loadScene(self, scene : Scene, debug =False,showGoal=False):
 		self.scene=scene
@@ -567,6 +583,44 @@ def saveScene(engine):
 def undo(engine):
 	is_down = engine.mouseWatcherNode.is_button_down
 	return is_down(KeyboardButton.ascii_key("z"))
+
+def compile_random_scene(directory,module_num=3):
+	ret=Scene()
+	ret.addModule(loadModule(directory+r"/base.txt"))
+
+	offset_sum=np.array([0,0,0])
+
+	candidates=os.listdir(directory)
+
+	candidates.remove("base.txt")
+	candidates.remove("mid_hole.txt")#TODO fix mid_hole module
+
+	names=[]
+
+	for i in range(module_num):
+		name=random.choice(candidates)
+		names.append(name)
+
+		mod=loadModule(directory+r"/"+name)
+
+		tmp=mod.getOffset()
+		mod.offset=mod.offset+offset_sum
+		offset_sum=offset_sum+tmp
+
+		ret.addModule(mod)
+	
+	tmp=np.array([0,5,0])+offset_sum
+	ret.setGoal(tmp)
+	print("Generated a new Scene with the following modules: "+str(names))
+	return ret
+
+
+def loadModule(path):
+	ret=Module()
+	f=open(path)
+	ret._unpackJson(json.loads(f.read()))
+	f.close()
+	return ret
 
 
 
