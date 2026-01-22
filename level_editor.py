@@ -92,11 +92,11 @@ engine.renderFrame()
 
 engine.addRuler(20)
 
-SENSOR_DATA_SIZE=[40,30]
+SENSOR_DATA_SIZE=[30,40]
 
 #brain=drone_brain(explore_factor=0.4,explore_decay=0.01,explore_min=0.05,lr=0.1,input_size=SENSOR_DATA_SIZE)
 #best_reward=-2
-rando = compile_random_scene("level_modules",3)
+rando,names = compile_random_scene("level_modules",3)
 #torch.autograd.set_detect_anomaly(True)
 #engine.lazyLoadScene(base_scene,debug=False)
 def gameLoop(engine,brain):
@@ -132,7 +132,7 @@ def gameLoop(engine,brain):
         tmp=tmp.squeeze()
         if(startMover(engine)):
             #engine.addObstacle(obs,showCollider=True)
-            plt.imshow(engine.getDepthBuffer(80,60),cmap="Greys")
+            plt.imshow(engine.getDepthBuffer(*SENSOR_DATA_SIZE),cmap="Greys")
             plt.show()
         if(devTools(engine)):
             engine.setDevTools(True)

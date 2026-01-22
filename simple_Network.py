@@ -39,6 +39,7 @@ class Network(nn.Module):
         x=torch.nn.functional.sigmoid(x) #work-around for inplace oparation breaking computaion graph
         return x
     
+    #wrapper for below function
     def _calcPoolOutObj(self,in_size,pool_layer):
 
         kernal_size=pool_layer.kernel_size
@@ -62,6 +63,7 @@ class Network(nn.Module):
 
         return self._calcPoolOut(in_size,kernal_size,stride,padding,dilation)
     
+    #internal meathod for calcuating output dims of a pooling layer
     def _calcPoolOut(self,in_size,kernal_size,stride,padding,dilation):
         
         if(padding is int):
@@ -98,8 +100,10 @@ class drone_brain():
 
 
     def __init__(self,explore_factor,explore_decay,explore_min,lr,input_size):
+        
+        self.action_num=6
 
-        self.net=Network(inChannels=1,outDims=13,input_size=input_size)
+        self.net=Network(inChannels=1,outDims=self.action_num,input_size=input_size)
         self.optimizer = torch.optim.Adam(params=self.net.parameters(),lr=lr)
 
         self.rewards=[]
@@ -112,13 +116,13 @@ class drone_brain():
 
         self.curr_step=0
 
-
+    #predict the best move for a given state
     def act(self,state):
 
         probs=self.net.forward(state)
         probs=probs.squeeze()
 
-        explore_modifier=torch.full(size=[13],fill_value=self.explore_factor)
+        explore_modifier=torch.full(size=[self.action_num],fill_value=self.explore_factor)
         keep_idx=torch.argmax(probs)
         explore_modifier[keep_idx]=1
 
@@ -132,8 +136,9 @@ class drone_brain():
         except:
             print("we've erred!") #for debuging, print probs if error in action selection
             print(probs)
-        action_formatted=F.one_hot(action_raw,num_classes=13)
-        action=self.classDecode(action_raw)
+        action_formatted=F.one_hot(action_raw,num_classes=self.action_num)
+        #action=self.classDecode(action_raw)
+        action=self.classDecodeExpiramntal(action_raw)
         
 
         self.curr_step+=1
@@ -148,12 +153,22 @@ class drone_brain():
         self.rewards.append(reward)
         return reward
     
-    def rewardFunc(self,next_state):
+    #reward function
+    def rewardFunc_old(self,next_state):
         # +1 to reward if reached the end, -1 to reward if crashed
         # main part, sd = goal distance from start, cd = current distance to goal. reward calulation: (sd-cd)/sd=r
         # so when cd -> 0, r -> 1
         return (1 if next_state.is_sucesssful else 0) + (-1 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)
     
+    def rewardFunc(self,next_state):
+        # +1 to reward if reached the end, -1 to reward if crashed
+        # main part, sd = goal distance from start, cd = current distance to goal. reward calulation: (sd-cd)/sd=r
+        # so when cd -> 0, r -> 1
+        # for some stupid reason, my code insisstes on minimising the reward. therefore, the reward function is now negeted
+        return-( (1 if next_state.is_sucesssful else 0) + (-1 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*2)
+    
+
+    #backprop
     #no clue if any of this actually works but lets hope for the best
     def learn(self):
         loss=self.calcLoss(self.action_probs,self.rewards)
@@ -168,7 +183,9 @@ class drone_brain():
         #decay explore
         self.explore_factor-=self.explore_decay
         self.explore_factor=max(self.explore_factor,self.explore_min)
+        return loss.item()
     
+    #calculate loss
     def calcLoss(self,action_likleyhoods,rewards):
         #-mean(log(chances of choosing what we chose)*rewards(discounted))
         loss=[]
@@ -179,7 +196,7 @@ class drone_brain():
         return torch.cat(loss).sum()
 
 
-    
+    #calculate discounted rewards
     def calc_discounted(self,gamma):
         ret =np.zeros(len(self.rewards))
         running_value=0
@@ -188,17 +205,24 @@ class drone_brain():
             ret[i]=running_value #add discounted reward to ret in appropriate index
         return ret
         
-
-    def save(self):
-        path="somthing"
+    #saves the model
+    def save(self,path,epoch):
         torch.save(
-            dict(online = self.net.online.state_dict(),target=self.net.target.state_dict(),explore_chance=self.explore_chance),
+            dict(net=self.net.state_dict(),explore_chance=self.explore_factor,epoch=epoch),
             path
         )
-        print("backup created")
+        #print("backup created")
     
+    #decodes network output 
     def classDecode(self,chosenAction): #chosen action: number in range 1-13
         map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, -1, 0, 0, 0, 0]),3:np.array([0, 0, 0, 10, 0, 0]),4:np.array([0, 0, 0, -10, 0, 0]),5:np.array([0, 0, 0, 0, 0, 1]),6:np.array([0, 0, 0, 0, 0, -1]),7:np.array([0, 0, 0, 0, 10, 0]),8:np.array([0, 0, 0, 0, -10, 0]),9:np.array([0, 0, 1, 0, 0, 0]),10:np.array([0, 0, -1, 0, 0, 0]),11:np.array([-1, 0, 0, 0, 0, 0]),12:np.array([1, 0, 0, 0, 0, 0]),13:np.array([0, 0, 0, 0, 0, 0])}
         #     w                              s                               left                           right                             e                              q                               up                              down                             space                          shift                            a                                 d                               no action
         return map[chosenAction.item()+1]
+    
+    #classDecode without rotation
+    def classDecodeExpiramntal(self,chosenAction): #chosen action: number in range 1-13
+        map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, -1, 0, 0, 0, 0]),3:np.array([0, 0, 1, 0, 0, 0]),4:np.array([0, 0, -1, 0, 0, 0]),5:np.array([-1, 0, 0, 0, 0, 0]),6:np.array([1, 0, 0, 0, 0, 0]),7:np.array([0, 0, 0, 0, 0, 0])}
+       
+        return map[chosenAction.item()+1]
+
 

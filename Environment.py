@@ -39,17 +39,20 @@ class Drone:
 		self.collider=self.actor.attachNewNode(self.colliderNode)
 		#self.collider.show()
 
+	#rotate drone
 	def rotate(self,dRot : np.array):
 		if(dRot.shape!=(3,)):
 			raise Exception("dRot must be a 3d vector")
 		self.rotation =self.rotation+dRot
-
+	
+	#move drone using world coordinents
 	def move_old(self,dPos : np.array):
 		if(dPos.shape!=(3,)):
 			raise Exception("dPos must be a 3d vector")
 		self.position=np.array([*self.actor.getPos()])+dPos
 		self.actor.setPos(*self.position)
 
+	#moves drone using relative cordinents
 	def move(self,dPos : np.array):
 		if (dPos.shape != (3,)):
 			raise Exception("dPos must be a 3d vector")
@@ -74,6 +77,7 @@ class Drone:
 		self.position = np.array([*self.actor.getPos()]) + np.array([x,y,z])
 		self.actor.setPos(*self.position)
 
+	#syncs camera pos with panda3d actor
 	def sync(self):
 		self.position = np.array([*self.actor.getPos()]) # sync in case of collision
 
@@ -110,13 +114,16 @@ class Wall():
 		return self._id
 	def _setColl(self,coll):
 		self._coll=coll
+	
 
+	#internal function, used when saving
 	def _jsonSto(self):
 		return {
 			"scale": self.scale.tolist(),
 			"pos": self.position.tolist(),
 			"rot":self.rotaion.tolist()
 		}
+	#internal function, used when loading
 	def _jsonLod(self,dict):
 		self.setPos(np.array(dict["pos"]))
 		self.scale=np.array(dict["scale"])
@@ -143,6 +150,7 @@ class Module:
 	def addWall(self, wall : Wall):
 		self.walls.append(wall)
 
+	#internal function, used when saving
 	def _formatJson(self):
 		dictsObs=[]
 		for x in self.obstacles:
@@ -158,7 +166,7 @@ class Module:
 			"walls":dictsWall,
 			"offset":self.offset.tolist()
 		}
-
+	#internal function, used when loading
 	def _unpackJson(self, dict):
 		dictwalls=dict["walls"]
 		for x in dictwalls:
@@ -201,6 +209,7 @@ class Scene:
 	def setGoal(self,pos : np.array):
 		self.goal=pos
 
+	#adds a module into this scene
 	def addModule(self, module:Module ):
 		for x in module.walls:
 			self.walls.append(copy.deepcopy(x))
@@ -208,7 +217,8 @@ class Scene:
 		#for x in module.obstacles:
 			#self.obstacles.append(copy.deepcopy(x))
 			#self.obstacles[-1].position=self.obstacles[-1].position+module.getOffset()
-
+	
+	#saves this scene as a module
 	def saveAsModule(self,offset=np.array([0,0,0])):
 		tmpmod=Module()
 		tmpmod.offset=offset
@@ -278,12 +288,14 @@ class Engine(ShowBase):
 
 		self.goal=np.array([0,0,0])
 
+		#create a texture for objects
 		img = PNMImage(1, 1, 1)
 		img.fill(0.7, 0.7, 0.7)
 		#self.white_tex = Texture("white")
 		#self.white_tex.load(img)
 		self.white_tex=TexturePool.loadTexture(r"tmp_img.png")
 
+		#set up io for dev tools
 		self.devInput = DirectEntry(
 			initialText="Enter wall dims (speprated by commas):",
 			numLines=1,
@@ -318,6 +330,7 @@ class Engine(ShowBase):
 			self.cam.setPos(*(self.drone.position+offset))
 			self.cam.setHpr(*self.drone.rotation)
 
+	#adds a wall(a static object)
 	def addWall(self,wall : Wall,showCollider =False):
 		self.walls.append(self.loader.loadModel(modelPath="models/box"))
 		self.walls[-1].setScale(*wall.scale)
@@ -335,6 +348,7 @@ class Engine(ShowBase):
 		if showCollider:
 			coll.show()
 
+	#registes an obstacle (dynamic object), unused
 	def addObstacle(self,obstacle : Obstacle,showCollider=False):
 		self.obstaclesObj.append(obstacle)
 		self.obstacles.append(self.loader.loadModel(modelPath="models/box"))
@@ -354,6 +368,7 @@ class Engine(ShowBase):
 		if showCollider:
 			coll.show()
 
+	#sets the goal, comented out code for rendring the goal for preformence reasons.
 	def addGoal(self,pos : np.array,doesRender=False):
 		self.goal=pos
 		"""self.goalRender=self.loader.loadModel(modelPath="models/box")
@@ -372,6 +387,7 @@ class Engine(ShowBase):
 			self.goalRender.reparentTo(self.render)
 		else:
 			self.goalRender.detachNode()
+	#add a rectengle of length x at 1,1,1 ,for development
 	def addRuler(self,length):
 		self.ruler=self.loader.loadModel(modelPath="models/box")
 		self.ruler.setPos(1,length/2,1)
@@ -380,10 +396,11 @@ class Engine(ShowBase):
 		self.ruler.setColor(0,0.82745098039,0.98823529411,1)
 
 
-
+	#update stuff
 	def tick(self):
 		self.drone.sync()
 		#drone.move(np.array([0,0.1,0]))
+		#update dynamic objects(unused)
 		for x in self.obstaclesObj:
 			x.onTick()
 			self.obstacles[x._id].setScale(*x.scale)
@@ -391,8 +408,11 @@ class Engine(ShowBase):
 			self.obstacles[x._id].setHpr(*x.rotaion)
 			x._coll.setPos(*x.position)
 
+	#raise a flag
 	def raiseCollFlag(self,entry):
 		self.collFlag=True
+	
+	#return true if a collision acurred between the drone and something
 	def cheackCollision(self):
 		if(self.collFlag):
 			self.collFlag=False
@@ -401,7 +421,7 @@ class Engine(ShowBase):
 
 
 
-
+	#renders a frame
 	def renderFrame(self):
 		#debug info
 		self.disp.setText("dist: "+str(round(self.getGoalDist(),2))
@@ -409,6 +429,7 @@ class Engine(ShowBase):
 
 		self.graphicsEngine.renderFrame()
 
+	#returns the depth buffer of the last frame rendered, scaled to given size
 	def getDepthBuffer(self,width=-1,hight=-1):
 		#render scene witout goal
 		#self.goalRender.detachNode()
@@ -430,7 +451,7 @@ class Engine(ShowBase):
 		#self.graphicsEngine.renderFrame()
 		return depth_image
 	
-	#load all object in scene, without setting as currently loaded scene (for development use only, objects loaded using this function will not be saved)
+	#load all object in scene, without setting it as currently loaded scene (for development use only, objects loaded using this function will not be saved)
 	def lazyLoadScene(self, scene : Scene, debug =False,showGoal=False):
 		for x in scene.walls:
 			self.addWall(x,debug)
@@ -443,7 +464,7 @@ class Engine(ShowBase):
 
 		self.addGoal(scene.goal,doesRender=showGoal)
 
-
+	#load scene
 	def loadScene(self, scene : Scene, debug =False,showGoal=False):
 		self.scene=scene
 		for x in scene.walls:
@@ -457,6 +478,7 @@ class Engine(ShowBase):
 
 		self.addGoal(scene.goal,doesRender=showGoal)
 
+	#unload scene
 	def unloadScene(self):
 		self.scene=0
 
@@ -480,6 +502,7 @@ class Engine(ShowBase):
 	def getGoalDistFromStart(self):
 		return (self.goal[1]-self.scene.startPos[1])
 
+	#dev tool, part of setDevTools()
 	def devAdd(self,entry):
 		out=[]
 		sanetised=""
@@ -498,7 +521,7 @@ class Engine(ShowBase):
 		self.devInputPos.show()
 
 
-
+	#dev tool, part of setDevTools()
 	def devSetPos(self,entry):
 		out = []
 		sanetised = ""
@@ -516,7 +539,7 @@ class Engine(ShowBase):
 		self.scene.addWall(wall)
 		self.addWall(wall)
 
-
+	#dev tool, adds a wall to the current scene
 	def setDevTools(self,on):
 		if(on):
 			self.devInput.enterText('Enter wall dims (speprated by commas):')
@@ -524,6 +547,7 @@ class Engine(ShowBase):
 		else:
 			self.devInput.hide()
 
+	#dev tool, removes the last wall added to the scene
 	def delLast(self):
 		print(len(self.walls))
 		if len(self.walls) >0:
@@ -538,7 +562,7 @@ class Engine(ShowBase):
 	
 
 	
-	
+#debug tool, allows for keyboard control
 def simulate_network(engine):
 		#inp=input("enter input:")
 		is_down = engine.mouseWatcherNode.is_button_down
@@ -569,7 +593,8 @@ def simulate_network(engine):
 			return np.array([1, 0, 0, 0, 0, 0])
 		else:
 			return np.array([0, 0, 0, 0, 0, 0])
-		
+
+#keybindings for dev tools
 def startMover(engine):
 	is_down = engine.mouseWatcherNode.is_button_down
 	return is_down(KeyboardButton.ascii_key("r"))
@@ -584,6 +609,7 @@ def undo(engine):
 	is_down = engine.mouseWatcherNode.is_button_down
 	return is_down(KeyboardButton.ascii_key("z"))
 
+#generate a random scene from x modules
 def compile_random_scene(directory,module_num=3):
 	ret=Scene()
 	ret.addModule(loadModule(directory+r"/base.txt"))
@@ -592,8 +618,9 @@ def compile_random_scene(directory,module_num=3):
 
 	candidates=os.listdir(directory)
 
+	#exclude base module (and the broken mid_hole) from being selected
 	candidates.remove("base.txt")
-	candidates.remove("mid_hole.txt")#TODO fix mid_hole module
+	candidates.remove("mid_hole.txt")
 
 	names=[]
 
@@ -612,9 +639,40 @@ def compile_random_scene(directory,module_num=3):
 	tmp=np.array([0,5,0])+offset_sum
 	ret.setGoal(tmp)
 	print("Generated a new Scene with the following modules: "+str(names))
-	return ret
+	return ret,names
 
+#create a scene from a list of modules
+def compile_scene(module_name_list,module_num=3): #TODO <-finish this
+	ret=Scene()
+	ret.addModule(loadModule(directory+r"/base.txt"))
 
+	offset_sum=np.array([0,0,0])
+
+	candidates=os.listdir(directory)
+
+	candidates.remove("base.txt")
+	candidates.remove("mid_hole.txt")#TODO fix mid_hole module
+
+	names=[]
+
+	for x in module_list:
+		name=random.choice(candidates)
+		names.append(name)
+
+		mod=loadModule(directory+r"/"+name)
+
+		tmp=mod.getOffset()
+		mod.offset=mod.offset+offset_sum
+		offset_sum=offset_sum+tmp
+
+		ret.addModule(mod)
+	
+	tmp=np.array([0,5,0])+offset_sum
+	ret.setGoal(tmp)
+	print("Generated a new Scene with the following modules: "+str(names))
+	return ret,names
+
+#helper function, loads a module from file
 def loadModule(path):
 	ret=Module()
 	f=open(path)

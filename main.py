@@ -57,7 +57,8 @@ scene1=Scene()
 
 LEVEL_LENGTH=2
 
-scene1=compile_random_scene("level_modules",LEVEL_LENGTH)
+scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
+
 
 
 #drone.setPos(np.array([0,-15,0]))
@@ -79,16 +80,50 @@ engine.renderFrame()
 #engine.addObstacle(obs,showCollider=True)
 #engine.setGoalRender(True) #<- rendering the goal is now off by defult for preformance reasons
 
-engine.addRuler(20)
+#engine.addRuler(20)
 
-SENSOR_DATA_SIZE=[40,30]
+SENSOR_DATA_SIZE=(30,40)
+#orgenaisation, to be chaged for each run
+RUN_IDETIFIER="basic CNN, 1"
 
-brain=drone_brain(explore_factor=0.4,explore_decay=0.01,explore_min=0.05,lr=0.1,input_size=SENSOR_DATA_SIZE)
+NOTES="""
+    basic network,\n
+    explore factor 1, no decay
+"""
+
+#create files
+os.mkdir(RUN_IDETIFIER)
+f=open(RUN_IDETIFIER+r"/module_list","a")
+dat=json.dumps(modules)
+f.write(dat)
+f.close()
+f=open(RUN_IDETIFIER+r"/rewards.json","a")
+f.write(json.dumps([]))
+f.close()
+f=open(RUN_IDETIFIER+r"/notes.txt","a")
+f.write(NOTES)
+f.close()
+
+def save_rewards(path):
+    rewards=[]
+    for x in brain.lifetime_rewards:
+        rewards+=x
+    for x in brain.rewards:
+        rewards+=x
+    rewards=rewards.tolist()#no clue why rewards is a numpy array, but here is a fix regardless
+    f=open(path,"w")
+    f.write(json.dumps(rewards))
+    f.close()
+
+brain=drone_brain(explore_factor=1,explore_decay=0,explore_min=0,lr=0.1,input_size=SENSOR_DATA_SIZE)
 best_reward=-2
 
-torch.autograd.set_detect_anomaly(True)
+torch.autograd.set_detect_anomaly(True) #enable traceback for torch backprop errors
 
-def gameLoop(engine,brain):
+
+losses=[]
+
+def gameLoop(engine,brain,epoch):
     engine.loadScene(scene1,debug=False)
     engine.drone.setPos(np.array([4,0,4]))
     #engine.drone.setPos(np.array([6,3,6]))
@@ -96,9 +131,10 @@ def gameLoop(engine,brain):
     undoDelay=False
     generate_new=False
     while not stop:
+        #update everything
         engine.tick()
         engine.updateCam()
-        taskMgr.step()
+        taskMgr.step()#panda3d's tick function
         engine.renderFrame()
 
 
@@ -118,11 +154,13 @@ def gameLoop(engine,brain):
         reward=brain.analize_state(currState)
         #best_reward=max(best_reward,reward)
         #tmp=simulate_network(engine) #network interface here
-        tmp=brain.act(currState)
+        tmp=brain.act(currState) #predict best move
         tmp=tmp.squeeze()
-        if(startMover(engine)):
+        #dev tools
+        #do NOT use while training!
+        if(startMover(engine)): 
             #engine.addObstacle(obs,showCollider=True)
-            plt.imshow(engine.getDepthBuffer(80,60),cmap="Greys")
+            plt.imshow(currState.sensorDat,cmap="Greys")
             plt.show()
         if(devTools(engine)):
             engine.setDevTools(True)
@@ -138,36 +176,58 @@ def gameLoop(engine,brain):
             undoDelay=True
         undoDelay=undo(engine)
 
-
+        #preform movement
         engine.drone.move(np.clip(tmp[:3],-0.1,0.1))
         engine.drone.rotate(np.clip(tmp[3:],-0.5,0.5))
+        engine.drone.rotation=np.clip(engine.drone.rotation,-50,50)
+
+        bar.update(bar_task,advance=0,best_reward=round(best_reward,2),curr_reward=round(reward,2))
 
         #time.sleep(0.016666)
-    brain.learn()
+    #save stuff
+    brain.save(RUN_IDETIFIER+r"/model",epoch)
+    f=open(RUN_IDETIFIER+r"/module_list","w")
+    dat=json.dumps(modules)
+    f.write(dat)
+    f.close()
+    save_rewards(RUN_IDETIFIER+r"/rewards.json")
+    losses.append(brain.learn())#backprop
     engine.unloadScene()
     return generate_new
 
-epochs=30
+epochs=50
+#fancy progress bar 
 best_reward=-2
 best_score_display=TextColumn("Best Reward: {task.fields[best_reward]}")
 explore_factor_display=TextColumn("Explore Factor: {task.fields[explore_factor]}")
+current_score_display=TextColumn("Current Reward: {task.fields[curr_reward]}")
 
-bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),best_score_display,explore_factor_display)
-bar_task=bar.add_task("training...",total=epochs,best_reward="N/A",explore_factor=brain.explore_factor)
+bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),best_score_display,explore_factor_display,current_score_display)
+bar_task=bar.add_task("training...",total=epochs,best_reward="N/A",explore_factor=brain.explore_factor,curr_reward="N/A")
 bar.start()
+#training loop
 for epoch in range(epochs):
-    generate_new=gameLoop(engine,brain)
+    generate_new=gameLoop(engine,brain,epoch)
     best_reward=max(best_reward,max(brain.lifetime_rewards[-1]))
     bar.update(bar_task,advance=1,best_reward=round(best_reward,2),explore_factor=brain.explore_factor)
     if generate_new:
-        scene1=compile_random_scene("level_modules",LEVEL_LENGTH)
-
+        scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
 bar.stop()
+#plot rewards graph
 rewards=[]
 for x in brain.lifetime_rewards:
     rewards+=x
 plt.plot(rewards)
 plt.show()
 
+plt.savefig(RUN_IDETIFIER+"/reward_graph",format='svg')
+plt.plot(losses)
+plt.show()
+plt.savefig(RUN_IDETIFIER+"/loss_graph",format='svg')
+
+brain.save(RUN_IDETIFIER+r"/model")
+
 engine.destroy() #DO NOT REMOVE prevents spyder from entering a loop
+
+
 

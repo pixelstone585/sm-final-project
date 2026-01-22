@@ -1,3 +1,4 @@
+#old code, for development use only
 def learn(self):
         if (self.curr_step % self.sync_interval == 0):
             self.sync_target()

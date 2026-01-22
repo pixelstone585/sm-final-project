@@ -1,3 +1,4 @@
+#fancy container for info regarding the current state
 class State():
     def __init__(self,sensorDat,has_crashed,is_sucesssful,goalDist,goalDistFromStart):
         self.sensorDat=sensorDat
