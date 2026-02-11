@@ -1,0 +1,8 @@
+
+best score: -2.6046796798706056
+
+explore factor: 0.6
+
+levels beaten: 8
+
+avg tries: 11.25

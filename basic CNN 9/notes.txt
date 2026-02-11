@@ -1,0 +1,8 @@
+
+    basic network,
+
+    explore factor 0.6, no decay
+
+    backwards movemnt disabled
+
+   increced los weight in reward calculation

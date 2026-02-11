@@ -14,10 +14,10 @@ class Network(nn.Module):
         super().__init__()
         self.conv1=nn.Conv2d(in_channels=inChannels,out_channels=32,kernel_size=5,stride=1)
         conv1Out=self._calcConvOutObj(input_size,self.conv1)
-        self.maxPool=nn.MaxPool2d(kernel_size=3,stride=2)
-        pool1Out=self._calcPoolOutObj(conv1Out,self.maxPool)
+        #self.maxPool=nn.MaxPool2d(kernel_size=3,stride=2)
+        #pool1Out=self._calcPoolOutObj(conv1Out,self.maxPool)   
         self.conv2=nn.Conv2d(in_channels=32,out_channels=1,kernel_size=5,stride=1)
-        conv2Out=self._calcConvOutObj(pool1Out,self.conv2)
+        conv2Out=self._calcConvOutObj(conv1Out,self.conv2)
         self.relu=nn.ReLU()
         self.sigmoid=nn.Sigmoid()
         self.flatten=nn.Flatten()
@@ -29,7 +29,7 @@ class Network(nn.Module):
         #temporary model for debugging
         x=self.conv1(x)
         x=self.relu(x)
-        x=self.maxPool(x)
+        #x=self.maxPool(x)
         x=self.conv2(x)
         x=self.flatten(x)
         x=self.linear1(x)
@@ -101,7 +101,7 @@ class drone_brain():
 
     def __init__(self,explore_factor,explore_decay,explore_min,lr,input_size):
         
-        self.action_num=6
+        self.action_num=5
 
         self.net=Network(inChannels=1,outDims=self.action_num,input_size=input_size)
         self.optimizer = torch.optim.Adam(params=self.net.parameters(),lr=lr)
@@ -138,7 +138,8 @@ class drone_brain():
             print(probs)
         action_formatted=F.one_hot(action_raw,num_classes=self.action_num)
         #action=self.classDecode(action_raw)
-        action=self.classDecodeExpiramntal(action_raw)
+        #action=self.classDecodeExpiramntal(action_raw)
+        action=self.classDecodeExpiramntal2(action_raw)
         
 
         self.curr_step+=1
@@ -150,6 +151,11 @@ class drone_brain():
     #log reward for last action, to be run after proccing the results of act()
     def analize_state(self,state):
         reward=self.rewardFunc(state)
+        self.rewards.append(reward)
+        return reward
+
+    def analize_stateV2(self,state):
+        reward=self.rewardFuncV2(state,los_area_size=8)
         self.rewards.append(reward)
         return reward
     
@@ -166,6 +172,24 @@ class drone_brain():
         # so when cd -> 0, r -> 1
         # for some stupid reason, my code insisstes on minimising the reward. therefore, the reward function is now negeted
         return-( (1 if next_state.is_sucesssful else 0) + (-1 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*2)
+    
+    def rewardFuncV2(self,next_state,los_area_size=4):
+        # +1 to reward if reached the end, -1 to reward if crashed
+        # main part, sd = goal distance from start, cd = current distance to goal. reward calulation: (sd-cd)/sd=r
+        # so when cd -> 0, r -> 1
+        #factor in the mean value of an area in the middle of the screen
+        dat=next_state.sensorDat
+        x_mid=dat.shape[1]//2
+        x_start=x_mid-(los_area_size//2-1)
+        x_end=x_mid+1+(los_area_size//2-1)
+        y_mid=dat.shape[0]//2
+        y_start=x_mid-(los_area_size//2-1)
+        y_end=x_mid+1+(los_area_size//2-1)
+        los=dat[y_start:y_end,x_start:x_end]
+
+        # for some stupid reason, my code insisstes on minimising the reward. therefore, the reward function is now negeted
+        return-( (1 if next_state.is_sucesssful else 0) + (-1 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*1+(np.mean(los)*1))
+    
     
 
     #backprop
@@ -184,6 +208,11 @@ class drone_brain():
         self.explore_factor-=self.explore_decay
         self.explore_factor=max(self.explore_factor,self.explore_min)
         return loss.item()
+    
+    def noLearn(self):
+        self.lifetime_rewards.append(self.rewards)
+        self.rewards=[]
+        self.action_probs=[]
     
     #calculate loss
     def calcLoss(self,action_likleyhoods,rewards):
@@ -208,10 +237,15 @@ class drone_brain():
     #saves the model
     def save(self,path,epoch):
         torch.save(
-            dict(net=self.net.state_dict(),explore_chance=self.explore_factor,epoch=epoch),
+            dict(net=self.net.state_dict(),explore_chance=self.explore_factor,epochs_left=epoch),
             path
         )
         #print("backup created")
+    def load(self,path):
+        dat=torch.load(path)
+        self.explore_factor=dat["explore_chance"]
+        self.net.load_state_dict(dat["net"])
+        return dat["epochs_left"]
     
     #decodes network output 
     def classDecode(self,chosenAction): #chosen action: number in range 1-13
@@ -222,6 +256,10 @@ class drone_brain():
     #classDecode without rotation
     def classDecodeExpiramntal(self,chosenAction): #chosen action: number in range 1-13
         map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, -1, 0, 0, 0, 0]),3:np.array([0, 0, 1, 0, 0, 0]),4:np.array([0, 0, -1, 0, 0, 0]),5:np.array([-1, 0, 0, 0, 0, 0]),6:np.array([1, 0, 0, 0, 0, 0]),7:np.array([0, 0, 0, 0, 0, 0])}
+       
+        return map[chosenAction.item()+1]
+    def classDecodeExpiramntal2(self,chosenAction): #chosen action: number in range 1-13 #no backwards movement
+        map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, 0, 1, 0, 0, 0]),3:np.array([0, 0, -1, 0, 0, 0]),4:np.array([-1, 0, 0, 0, 0, 0]),5:np.array([1, 0, 0, 0, 0, 0]),6:np.array([0, 0, 0, 0, 0, 0])}
        
         return map[chosenAction.item()+1]
 

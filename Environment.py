@@ -608,6 +608,9 @@ def saveScene(engine):
 def undo(engine):
 	is_down = engine.mouseWatcherNode.is_button_down
 	return is_down(KeyboardButton.ascii_key("z"))
+def earlystop(engine):
+	is_down = engine.mouseWatcherNode.is_button_down
+	return is_down(KeyboardButton.ascii_key("-"))
 
 #generate a random scene from x modules
 def compile_random_scene(directory,module_num=3):

@@ -55,7 +55,7 @@ scene.setGoal(np.array([0,15,0]))
 #engine.addObstacle(obs,True)
 scene1=Scene()
 
-LEVEL_LENGTH=2
+LEVEL_LENGTH=1
 
 scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
 
@@ -83,15 +83,18 @@ engine.renderFrame()
 #engine.addRuler(20)
 
 SENSOR_DATA_SIZE=(30,40)
-#orgenaisation, to be chaged for each run
-RUN_IDETIFIER="basic CNN, 1"
+#orgenaisation, to be changed for each run
+RUN_IDETIFIER="terminationtest"
 
 NOTES="""
     basic network,\n
-    explore factor 1, no decay
+    explore factor 0.6, no decay\n
+    backwards movemnt disabled\n
+    decreeced goal distance weight in reward calculation
+    increesed los area 4x4 -> 8x8
 """
 
-#create files
+#create files, comment if loading from file
 os.mkdir(RUN_IDETIFIER)
 f=open(RUN_IDETIFIER+r"/module_list","a")
 dat=json.dumps(modules)
@@ -103,6 +106,7 @@ f.close()
 f=open(RUN_IDETIFIER+r"/notes.txt","a")
 f.write(NOTES)
 f.close()
+start_epoch=0
 
 def save_rewards(path):
     rewards=[]
@@ -115,10 +119,12 @@ def save_rewards(path):
     f.write(json.dumps(rewards))
     f.close()
 
-brain=drone_brain(explore_factor=1,explore_decay=0,explore_min=0,lr=0.1,input_size=SENSOR_DATA_SIZE)
-best_reward=-2
+brain=drone_brain(explore_factor=0.6,explore_decay=0,explore_min=0,lr=0.1,input_size=SENSOR_DATA_SIZE)
+best_reward=2
 
 torch.autograd.set_detect_anomaly(True) #enable traceback for torch backprop errors
+
+#start_epoch=brain.load(r"D:\eyals_staff\final proj\Env V2\basic CNN 7\model") #uncomment if loading from file
 
 
 losses=[]
@@ -130,6 +136,7 @@ def gameLoop(engine,brain,epoch):
     stop = False
     undoDelay=False
     generate_new=False
+    dobreak=False
     while not stop:
         #update everything
         engine.tick()
@@ -151,7 +158,7 @@ def gameLoop(engine,brain,epoch):
 
         #generate state object from game data
         currState=State(engine.getDepthBuffer(*SENSOR_DATA_SIZE),has_coll,engine.getGoalDist() <=0,engine.getGoalDist(),engine.getGoalDistFromStart())
-        reward=brain.analize_state(currState)
+        reward=brain.analize_stateV2(currState)
         #best_reward=max(best_reward,reward)
         #tmp=simulate_network(engine) #network interface here
         tmp=brain.act(currState) #predict best move
@@ -175,6 +182,15 @@ def gameLoop(engine,brain,epoch):
             engine.delLast()
             undoDelay=True
         undoDelay=undo(engine)
+        if(earlystop(engine)):
+            pause=hideBar(bar)
+            next(pause)
+            confirm=input("stop training?[y/n]:")
+            if confirm.lower() == "y" or confirm.lower() == "yes":
+                stop=True
+                dobreak=True
+            
+            
 
         #preform movement
         engine.drone.move(np.clip(tmp[:3],-0.1,0.1))
@@ -193,39 +209,88 @@ def gameLoop(engine,brain,epoch):
     save_rewards(RUN_IDETIFIER+r"/rewards.json")
     losses.append(brain.learn())#backprop
     engine.unloadScene()
-    return generate_new
+    return generate_new,dobreak
 
-epochs=50
+epochs=100
+
 #fancy progress bar 
-best_reward=-2
+best_reward=2
+levels_beaten=0
+tries=0
+avg_tries=0
 best_score_display=TextColumn("Best Reward: {task.fields[best_reward]}")
 explore_factor_display=TextColumn("Explore Factor: {task.fields[explore_factor]}")
 current_score_display=TextColumn("Current Reward: {task.fields[curr_reward]}")
+levels_beaten_display=TextColumn("levels beaten: {task.fields[levels_beaten]}")
+avg_tries_display=TextColumn("avg tries: {task.fields[avg_tries]}")
+was_terminted=""
 
-bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),best_score_display,explore_factor_display,current_score_display)
-bar_task=bar.add_task("training...",total=epochs,best_reward="N/A",explore_factor=brain.explore_factor,curr_reward="N/A")
+def hideBar(progress: Progress):
+    transient = progress.live.transient # save the old value
+    progress.live.transient = True
+    progress.stop()
+    progress.live.transient = transient # restore the old value
+    try:
+        yield
+    finally:
+        # make space for the progress to use so it doesn't overwrite any previous lines
+        print("\n" * (len(progress.tasks) - 2))
+        progress.start()
+
+bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),best_score_display,explore_factor_display,current_score_display,levels_beaten_display,avg_tries_display)
+bar_task=bar.add_task("training...",total=epochs,best_reward="N/A",explore_factor=brain.explore_factor,curr_reward="N/A",levels_beaten=levels_beaten,avg_tries=avg_tries)
 bar.start()
 #training loop
-for epoch in range(epochs):
-    generate_new=gameLoop(engine,brain,epoch)
-    best_reward=max(best_reward,max(brain.lifetime_rewards[-1]))
-    bar.update(bar_task,advance=1,best_reward=round(best_reward,2),explore_factor=brain.explore_factor)
+for epoch in range(epochs-start_epoch):
+    generate_new,dobreak=gameLoop(engine,brain,epochs-epoch)
+    best_reward=min(best_reward,min(brain.lifetime_rewards[-1]))
+    bar.update(bar_task,advance=1,best_reward=round(best_reward,2),curr_reward=brain.lifetime_rewards[-1],explore_factor=brain.explore_factor,levels_beaten=levels_beaten,avg_tries=avg_tries)
+    tries+=1
     if generate_new:
         scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
-bar.stop()
+        best_reward=0
+        levels_beaten+=1
+        avg_tries=(avg_tries*(levels_beaten-1)+tries)/levels_beaten#calculate new avarege tries
+        tries=0
+    if dobreak:
+        was_terminted=f"\ntraining was terminated at epoch {epoch} / {epochs}."
+        break
+
+run_data=f"""
+best score: {best_reward}\n
+explore factor: {brain.explore_factor}\n
+levels beaten: {levels_beaten}\n
+avg tries: {avg_tries}
+"""+was_terminted
+
+f=open(RUN_IDETIFIER+r"/run_data.txt","a")
+f.write(run_data)
+f.close()
+
 #plot rewards graph
 rewards=[]
 for x in brain.lifetime_rewards:
     rewards+=x
 plt.plot(rewards)
+plt.savefig(RUN_IDETIFIER+"/reward_graph.svg",format='svg')
 plt.show()
 
-plt.savefig(RUN_IDETIFIER+"/reward_graph",format='svg')
+
 plt.plot(losses)
+plt.savefig(RUN_IDETIFIER+"/loss_graph.svg",format='svg')
 plt.show()
-plt.savefig(RUN_IDETIFIER+"/loss_graph",format='svg')
 
-brain.save(RUN_IDETIFIER+r"/model")
+
+#plot avarege reward per epoch
+avgs=[]
+for x in brain.lifetime_rewards:
+    avgs.append(sum(x)/len(x))
+plt.plot(avgs)
+plt.savefig(RUN_IDETIFIER+"/avg_reward_graph.svg",format='svg')
+plt.show()
+
+
+brain.save(RUN_IDETIFIER+r"/model",epochs)
 
 engine.destroy() #DO NOT REMOVE prevents spyder from entering a loop
 
