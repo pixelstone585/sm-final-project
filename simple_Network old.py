@@ -16,40 +16,27 @@ class Network(nn.Module):
         conv1Out=self._calcConvOutObj(input_size,self.conv1)
         #self.maxPool=nn.MaxPool2d(kernel_size=3,stride=2)
         #pool1Out=self._calcPoolOutObj(conv1Out,self.maxPool)   
-        self.conv2=nn.Conv2d(in_channels=32,out_channels=16,kernel_size=5,stride=1)
+        self.conv2=nn.Conv2d(in_channels=32,out_channels=1,kernel_size=5,stride=1)
         conv2Out=self._calcConvOutObj(conv1Out,self.conv2)
-        self.conv3=nn.Conv2d(in_channels=16,out_channels=1,kernel_size=5,stride=1)
-        conv3Out=self._calcConvOutObj(conv2Out,self.conv3)
-
         self.relu=nn.ReLU()
         self.sigmoid=nn.Sigmoid()
         self.flatten=nn.Flatten()
-        self.softmax=nn.Softmax()
-
-        self.linear1=nn.Linear(int(conv3Out[0]*conv3Out[1]),128)
-        self.linear2=nn.Linear(128,32)
-        self.linear3=nn.Linear(32,outDims)
+        self.linear1=nn.Linear(int(conv2Out[0]*conv2Out[1]),128)
+        self.linear2=nn.Linear(128,outDims)
 
     def forward(self,state):
         x=torch.from_numpy(np.expand_dims(state.sensorDat,axis=0))
-        print(x[0])
         #temporary model for debugging
         x=self.conv1(x)
         x=self.relu(x)
         #x=self.maxPool(x)
         x=self.conv2(x)
-        x=self.relu(x)
-        x=self.conv3(x)
-        x=self.relu(x)
         x=self.flatten(x)
         x=self.linear1(x)
         x=self.relu(x)
         x=self.linear2(x)
-        x=self.relu(x)
-        x=self.linear3(x)
-        x=self.softmax(x)
         #x=self.relu(x)
-        #x=self.sigmoid(x)
+        x=self.sigmoid(x)
         #x=torch.nn.functional.sigmoid(x) #work-around for inplace oparation breaking computaion graph
         return x
     
@@ -230,7 +217,7 @@ class drone_brain():
 
 
         # for some stupid reason, my code insisstes on minimising the reward. therefore, the reward function is now negeted
-        return -( (1 if next_state.is_sucesssful else 0) + (-2 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*0.16+(np.mean(los)*1))
+        return ( (1 if next_state.is_sucesssful else 0) + (-2 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*0.16+(np.mean(los)*1))
     
     
     def zerograd(self):    
@@ -248,7 +235,7 @@ class drone_brain():
         loss=self.calcLoss(self.action_probs,discounted)
         #print("loss "+str(loss))
         loss.backward()
-        #torch.nn.utils.clip_grad_norm(self.net.parameters(),0.5)
+        torch.nn.utils.clip_grad_norm(self.net.parameters(),0.5)
         self.optimizer.step()
 
         #log rewards for this epoch and clear memeory

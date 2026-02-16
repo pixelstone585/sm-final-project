@@ -84,14 +84,13 @@ engine.renderFrame()
 
 SENSOR_DATA_SIZE=(30,40)
 #orgenaisation, to be changed for each run
-RUN_IDETIFIER="terminationtest"
+RUN_IDETIFIER="CNN , minimum escape attempt 7"
 
 NOTES="""
     basic network,\n
     explore factor 0.6, no decay\n
-    backwards movemnt disabled\n
-    decreeced goal distance weight in reward calculation
-    increesed los area 4x4 -> 8x8
+    changed network architecture\n
+    idfk anymore
 """
 
 #create files, comment if loading from file
@@ -131,12 +130,13 @@ losses=[]
 
 def gameLoop(engine,brain,epoch):
     engine.loadScene(scene1,debug=False)
-    engine.drone.setPos(np.array([4,0,4]))
-    #engine.drone.setPos(np.array([6,3,6]))
+    #engine.drone.setPos(np.array([4,0,4]))
+    engine.drone.setPos(np.array([6,0,6]))
     stop = False
     undoDelay=False
     generate_new=False
     dobreak=False
+    #brain.zerograd()
     while not stop:
         #update everything
         engine.tick()
@@ -158,10 +158,10 @@ def gameLoop(engine,brain,epoch):
 
         #generate state object from game data
         currState=State(engine.getDepthBuffer(*SENSOR_DATA_SIZE),has_coll,engine.getGoalDist() <=0,engine.getGoalDist(),engine.getGoalDistFromStart())
-        reward=brain.analize_stateV2(currState)
+        reward=brain.analize_stateV3(currState)
         #best_reward=max(best_reward,reward)
         #tmp=simulate_network(engine) #network interface here
-        tmp=brain.act(currState) #predict best move
+        tmp,disp=brain.act(currState) #predict best move
         tmp=tmp.squeeze()
         #dev tools
         #do NOT use while training!
@@ -197,7 +197,9 @@ def gameLoop(engine,brain,epoch):
         engine.drone.rotate(np.clip(tmp[3:],-0.5,0.5))
         engine.drone.rotation=np.clip(engine.drone.rotation,-50,50)
 
-        bar.update(bar_task,advance=0,best_reward=round(best_reward,2),curr_reward=round(reward,2))
+        pred_disp=torch.round(disp.detach(),decimals=2).tolist()[0]
+        pred_disp=[round(elm,4) for elm in pred_disp]
+        bar.update(bar_task,advance=0,curr_reward=round(reward,4),last_pred=pred_disp)
 
         #time.sleep(0.016666)
     #save stuff
@@ -219,10 +221,11 @@ levels_beaten=0
 tries=0
 avg_tries=0
 best_score_display=TextColumn("Best Reward: {task.fields[best_reward]}")
-explore_factor_display=TextColumn("Explore Factor: {task.fields[explore_factor]}")
+#explore_factor_display=TextColumn("Explore Factor: {task.fields[explore_factor]}")
 current_score_display=TextColumn("Current Reward: {task.fields[curr_reward]}")
 levels_beaten_display=TextColumn("levels beaten: {task.fields[levels_beaten]}")
 avg_tries_display=TextColumn("avg tries: {task.fields[avg_tries]}")
+last_pred_display=TextColumn("last prediction: {task.fields[last_pred]}")
 was_terminted=""
 
 def hideBar(progress: Progress):
@@ -237,14 +240,14 @@ def hideBar(progress: Progress):
         print("\n" * (len(progress.tasks) - 2))
         progress.start()
 
-bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),best_score_display,explore_factor_display,current_score_display,levels_beaten_display,avg_tries_display)
-bar_task=bar.add_task("training...",total=epochs,best_reward="N/A",explore_factor=brain.explore_factor,curr_reward="N/A",levels_beaten=levels_beaten,avg_tries=avg_tries)
+bar=Progress(TextColumn("[progress.description]{task.description}"),BarColumn(),MofNCompleteColumn(),current_score_display,levels_beaten_display,avg_tries_display,last_pred_display)
+bar_task=bar.add_task("training...",total=epochs,curr_reward="N/A",levels_beaten=levels_beaten,avg_tries=avg_tries,last_pred="N/A")
 bar.start()
 #training loop
 for epoch in range(epochs-start_epoch):
     generate_new,dobreak=gameLoop(engine,brain,epochs-epoch)
     best_reward=min(best_reward,min(brain.lifetime_rewards[-1]))
-    bar.update(bar_task,advance=1,best_reward=round(best_reward,2),curr_reward=brain.lifetime_rewards[-1],explore_factor=brain.explore_factor,levels_beaten=levels_beaten,avg_tries=avg_tries)
+    bar.update(bar_task,advance=1,curr_reward=brain.lifetime_rewards[-1],levels_beaten=levels_beaten,avg_tries=avg_tries)
     tries+=1
     if generate_new:
         scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)

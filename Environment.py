@@ -447,6 +447,8 @@ class Engine(ShowBase):
 			tmpimg=tmpimg.resize((hight,width))
 			depth_image=np.array(tmpimg)
 
+		depth_image=(depth_image-0.9)/0.1 #scale values
+
 		#rerender frame with goal
 		#self.graphicsEngine.renderFrame()
 		return depth_image
