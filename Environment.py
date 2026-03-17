@@ -35,7 +35,7 @@ class Drone:
 		self.actor.setScale(0.1,0.1,0.1)
 
 		self.colliderNode=CollisionNode("drone")
-		self.colliderNode.addSolid(CollisionBox(LPoint3f(0,0,0),8,8,8))
+		self.colliderNode.addSolid(CollisionBox(LPoint3f(0,0,0),4,4,4))
 		self.collider=self.actor.attachNewNode(self.colliderNode)
 		#self.collider.show()
 
@@ -59,7 +59,7 @@ class Drone:
 
 		#this was a pain to figure out
 
-		#forward - backword
+		#forward - backward
 		y=dPos[1]*math.cos(math.radians(self.rotation[1]))*math.cos(math.radians(self.rotation[0]))
 		x=-dPos[1]*math.cos(math.radians(self.rotation[1]))*math.sin(math.radians(self.rotation[0]))
 		z=dPos[1]*math.sin(math.radians(self.rotation[1]))
@@ -233,7 +233,7 @@ class Scene:
 
 
 class Engine(ShowBase):
-	def __init__(self,drone : Drone, sensor_range=50,debugCam=False):
+	def __init__(self,drone : Drone, sensor_range=50,Fov=30,debugCam=False):
 		ShowBase.__init__(self)
 		self.walls=[]
 		self.obstacles=[]
@@ -241,7 +241,7 @@ class Engine(ShowBase):
 
 		self.test_wall=Wall(np.array([1,1,1]))
 
-		self.disp=OnscreenText(text="dist: 0", pos=(-1.3, 0.6), scale=0.1, fg=(1, 1, 1, 1), align=0, mayChange=True)
+		self.disp=OnscreenText(text="dist: 0", pos=(-1, 0.6), scale=0.1, fg=(1, 1, 1, 1), align=0, mayChange=True)
 
 
 		#jank depth buffer extraction setup
@@ -258,6 +258,8 @@ class Engine(ShowBase):
 		self.depthBuffer.addRenderTexture(self.depthTex,
 										  GraphicsOutput.RTMCopyRam, GraphicsOutput.RTPDepth)
 		lens = self.cam.node().getLens()
+		lens.setFov(Fov)
+		print("fov:"+str(lens.getFov()))
 		lens.setFar(sensor_range)
 		self.depthCam = self.makeCamera(self.depthBuffer,lens=lens,scene=self.render)
 		self.depthCam.reparentTo(self.cam)
@@ -317,6 +319,9 @@ class Engine(ShowBase):
 		self.devPos=np.array([0,0,0])
 		self.devInput.hide()
 		self.devInputPos.hide()
+	
+	def getNear(self):
+		return self.cam.node().getLens().getNear()
 
 	#workaround for jank camera parenting
 	#x,z,y
@@ -382,11 +387,11 @@ class Engine(ShowBase):
 		#self.goalRender.setTexture(self.white_tex,1)
 		#self.goalRender.setColor(0,1,0,1)"""
 
-	def setGoalRender(self,toggle):
+	"""def setGoalRender(self,toggle):
 		if(toggle):
 			self.goalRender.reparentTo(self.render)
 		else:
-			self.goalRender.detachNode()
+			self.goalRender.detachNode()"""
 	#add a rectengle of length x at 1,1,1 ,for development
 	def addRuler(self,length):
 		self.ruler=self.loader.loadModel(modelPath="models/box")
@@ -467,7 +472,7 @@ class Engine(ShowBase):
 		self.addGoal(scene.goal,doesRender=showGoal)
 
 	#load scene
-	def loadScene(self, scene : Scene, debug =False,showGoal=False):
+	def loadScene(self, scene : Scene, debug =False):
 		self.scene=scene
 		for x in scene.walls:
 			self.addWall(x,debug)
@@ -478,7 +483,7 @@ class Engine(ShowBase):
 		self.drone.setPos(scene.startPos)
 		self.drone.setRot(scene.startRot)
 
-		self.addGoal(scene.goal,doesRender=showGoal)
+		self.addGoal(scene.goal,doesRender=False)
 
 	#unload scene
 	def unloadScene(self):
@@ -647,7 +652,7 @@ def compile_random_scene(directory,module_num=3):
 	return ret,names
 
 #create a scene from a list of modules
-def compile_scene(module_name_list,module_num=3): #TODO <-finish this
+def compile_scene(module_name_list,directory): #TODO <-finish this
 	ret=Scene()
 	ret.addModule(loadModule(directory+r"/base.txt"))
 
@@ -660,8 +665,8 @@ def compile_scene(module_name_list,module_num=3): #TODO <-finish this
 
 	names=[]
 
-	for x in module_list:
-		name=random.choice(candidates)
+	for x in module_name_list:
+		name=x
 		names.append(name)
 
 		mod=loadModule(directory+r"/"+name)
