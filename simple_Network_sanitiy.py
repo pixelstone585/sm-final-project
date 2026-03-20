@@ -21,6 +21,7 @@ class Network(nn.Module):
         self.softmax=nn.Softmax()
         self.linear1=nn.Linear(int(poolout[0]*poolout[1]),32)
         self.linear2=nn.Linear(32,outDims)
+        #self.linear3=nn.Linear(16,outDims)
 
 
     def forward(self,state):
@@ -33,6 +34,8 @@ class Network(nn.Module):
         x=self.linear2(x)
         #x=self.softmax(x)
         #x=torch.argmax(x)
+        #x=self.relu(x)
+        #x=self.linear3(x)
         x=self.relu(x)
         #x=self.sigmoid(x)
         #x=torch.nn.functional.sigmoid(x) #work-around for inplace oparation breaking computaion graph
@@ -210,8 +213,8 @@ class drone_brain():
     
     
     #log reward for last action, to be run after proccing the results of act()
-    def analize_state(self,state):
-        reward=self.rewardFunc(state)
+    def analize_stateV1(self,state):
+        reward=self.rewardFuncV1(state)
         self.rewards.append(reward)
         return reward
 
@@ -245,7 +248,7 @@ class drone_brain():
         # so when cd -> 0, r -> 1
         return (1 if next_state.is_sucesssful else 0) + (-5 if next_state.has_crashed else 0)+((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)
     
-    def rewardFunc(self,next_state):
+    def rewardFuncV1(self,next_state):
         # +1 to reward if reached the end, -1 to reward if crashed
         # main part, sd = goal distance from start, cd = current distance to goal. reward calulation: (sd-cd)/sd=r
         # so when cd -> 0, r -> 1
@@ -439,7 +442,7 @@ class drone_brain():
         #print(str(los)+"|"+str(d))
 
         # for some stupid reason, my code insisstes on minimising the reward. therefore, the reward function is now negeted
-        return (((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*0.25-(dist*0.75)+(dist_min*0.5)+(10 if next_state.is_sucesssful else 0) + (-5 if next_state.has_crashed else 0))
+        return (((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*0-(dist*0.75)+(dist_min*0.25)+(10 if next_state.is_sucesssful else 0) + (-6 if next_state.has_crashed else 0))
     
     
     def zerograd(self):    

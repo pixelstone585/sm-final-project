@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from rich.progress import Progress, MofNCompleteColumn , TextColumn, BarColumn
 print("sanity check")
-loadPrcFileData("", "win-size 480 360")#set window size
+loadPrcFileData("", "win-size 600 600")#set window size
+
 
 drone=Drone()
-engine=Engine(drone,debugCam=False,sensor_range=50)
+engine=Engine(drone,debugCam=False,sensor_range=50,Fov=60)
 
 base_scene =Scene()
 testModule= Module()
@@ -56,7 +57,7 @@ obs.setPos(np.array([10,0,0]))
 #scene.addObstacle(obs)"""
 
 base_scene.setGoal(np.array([0,40,0]))
-f=open(r"level_modules/half_bottom.txt")
+f=open(r"level_modules/L_top_left.txt")
 testModule._unpackJson(json.loads(f.read()))
 f.close()
 base_scene.addModule(testModule)
@@ -90,18 +91,18 @@ engine.renderFrame()
 #engine.addObstacle(obs,showCollider=True)
 #engine.setGoalRender(True) #<- rendering the goal is now off by defult for preformance reasons
 
-engine.addRuler(20)
+#engine.addRuler(20)
 
-SENSOR_DATA_SIZE=[30,40]
+SENSOR_DATA_SIZE=[600,600]
 
 #brain=drone_brain(explore_factor=0.4,explore_decay=0.01,explore_min=0.05,lr=0.1,input_size=SENSOR_DATA_SIZE)
 #best_reward=-2
-rando,names = compile_random_scene("level_modules",3)
+#rando,names = compile_random_scene("level_modules",3)
 #torch.autograd.set_detect_anomaly(True)
 #engine.lazyLoadScene(base_scene,debug=False)
 def gameLoop(engine,brain):
-    engine.loadScene(rando,debug=False)
-    engine.drone.setPos(np.array([4,0,4]))
+    engine.loadScene(base_scene,debug=False)
+    engine.drone.setPos(np.array([5,0,5]))
     #engine.goal=np.array([0,100,0])
     #engine.drone.setPos(np.array([6,3,6]))
     stop = False
@@ -122,9 +123,6 @@ def gameLoop(engine,brain):
         if engine.getGoalDist() <=0:
             print("Success!")
             #stop=True
-
-        #generate state object from game data
-        currState=State(engine.getDepthBuffer(*SENSOR_DATA_SIZE),has_coll,engine.getGoalDist() <=0,engine.getGoalDist(),engine.getGoalDistFromStart())
         #reward=brain.analize_state(currState)
         #best_reward=max(best_reward,reward)
         tmp=simulate_network(engine) #network interface here
@@ -132,14 +130,16 @@ def gameLoop(engine,brain):
         tmp=tmp.squeeze()
         if(startMover(engine)):
             #engine.addObstacle(obs,showCollider=True)
-            plt.imshow(engine.getDepthBuffer(*SENSOR_DATA_SIZE),cmap="Greys")
+            clr=plt.imshow(engine.getDepthBuffer(*SENSOR_DATA_SIZE),cmap="Greys")
+            plt.colorbar(clr)
             plt.show()
         if(devTools(engine)):
             engine.setDevTools(True)
 
         if(saveScene(engine)):
+            name=input("enter module name:")
             dat=engine.scene.saveAsModule(offset=np.array([0,20,0]))
-            f=open(r"mistake.txt","w")
+            f=open(name+r".txt","w")
             f.write(json.dumps(dat))
             f.close()
 

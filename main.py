@@ -21,7 +21,7 @@ LEVEL_LENGTH=1
 
 #scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)#generate random level
 
-scene1,modules=compile_scene(["top_right_hole2.txt"],"level_modules")
+scene1,modules=compile_scene(["L_top_right.txt"],"level_modules")
 
 
 #drone.setPos(np.array([0,-15,0]))
@@ -47,7 +47,7 @@ engine.renderFrame()
 
 SENSOR_DATA_SIZE=(600,600)
 #orgenaisation, to be changed for each run
-RUN_IDETIFIER="avgpool 26"
+RUN_IDETIFIER="avgpool 33"
 
 NOTES="""
     basic network,\n
@@ -60,10 +60,10 @@ NOTES="""
     x=self.linear2(x)\n
     x=self.relu(x)\n
 
-    500 epochs\n
-    new scene is now generated every 3 wins
-    distance from min value is now in reward calc
-
+    50 epochs\n
+    full train using only L_top_right
+    simplified reward
+    avg pool kernal size 200x200
     
     
 """
@@ -200,7 +200,7 @@ def gameLoop(engine,brain,epoch):
 
     return generate_new,dobreak
 
-epochs=500
+epochs=50
 
 #fancy progress bar 
 best_reward=2
@@ -255,9 +255,9 @@ for epoch in range(epochs-start_epoch):
         #tries=0
     #generate new scene if network has succeeded.
     if (generate_new ):
-        scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
+        #scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
         generated_levels.append(modules)
-        #scene1,modules=compile_scene(["top_right_hole2.txt"],"level_modules")
+        scene1,modules=compile_scene(["L_top_right.txt"],"level_modules")
         #new_counter=1
     #terminate traning if needed
     if dobreak:
