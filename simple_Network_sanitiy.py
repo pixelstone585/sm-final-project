@@ -441,7 +441,7 @@ class drone_brain():
 
         #print(str(los)+"|"+str(d))
 
-        # for some stupid reason, my code insisstes on minimising the reward. therefore, the reward function is now negeted
+        
         return (((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*0-(dist*0.75)+(dist_min*0.25)+(10 if next_state.is_sucesssful else 0) + (-6 if next_state.has_crashed else 0))
     
     

@@ -141,28 +141,14 @@ def gameLoop(engine,brain,epoch):
         reward=brain.analize_stateV6(currState)
         #best_reward=max(best_reward,reward)
         #tmp=simulate_network(engine) #network interface here
-        tmp,disp=brain.act(currState,(epoch==epochs and override_counter <100)) #predict best move(override on first epoch)
+        tmp,disp=brain.act(currState,False) #predict best move
         override_counter+=1
         tmp=tmp.squeeze()
-        #dev tools
-        #do NOT use while training!
+        #display depth buffer
         if(startMover(engine)): 
             #engine.addObstacle(obs,showCollider=True)
             plt.imshow(currState.sensorDat,cmap="Greys")
             plt.show()
-        if(devTools(engine)):
-            engine.setDevTools(True)
-
-        if(saveScene(engine)):
-            dat=engine.scene.saveAsModule()
-            f=open(r"tmp.txt","w")
-            f.write(json.dumps(dat))
-            f.close()
-
-        if(undo(engine)and not undoDelay):
-            engine.delLast()
-            undoDelay=True
-        undoDelay=undo(engine)
 
         #input for terminating traning
         if(earlystop(engine)):
@@ -214,7 +200,7 @@ levels_beaten_display=TextColumn("levels beaten: {task.fields[levels_beaten]}")
 avg_tries_display=TextColumn("time since last win: {task.fields[avg_tries]}")
 last_pred_display=TextColumn("last prediction: {task.fields[last_pred]}")
 was_terminted=""
-
+#hides the progress bar
 def hideBar(progress: Progress):
     transient = progress.live.transient # save the old value
     progress.live.transient = True
