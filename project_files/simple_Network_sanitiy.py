@@ -14,14 +14,10 @@ class Network(nn.Module):
         super().__init__()
         self.relu=nn.ReLU()
         self.flatten=nn.Flatten()
-        self.sigmoid=nn.Sigmoid()
-        #self.avgpool=nn.MaxPool2d(kernel_size=(8,12),stride=(8,12))
         self.avgpool=nn.AvgPool2d(kernel_size=60,stride=60)
         poolout=self._calcAvgPoolOutObj(input_size,self.avgpool)
-        self.softmax=nn.Softmax()
         self.linear1=nn.Linear(int(poolout[0]*poolout[1]),32)
         self.linear2=nn.Linear(32,outDims)
-        #self.linear3=nn.Linear(16,outDims)
 
 
     def forward(self,state):
@@ -29,17 +25,11 @@ class Network(nn.Module):
         x=self.avgpool(x_in)
         x=self.flatten(x)
         x=self.linear1(x)
-        #x=self.sigmoid(x)
         x=self.relu(x)
         x=self.linear2(x)
-        #x=self.softmax(x)
-        #x=torch.argmax(x)
-        #x=self.relu(x)
-        #x=self.linear3(x)
         x=self.relu(x)
-        #x=self.sigmoid(x)
-        #x=torch.nn.functional.sigmoid(x) #work-around for inplace oparation breaking computaion graph
         return x
+    #algorithem for preforming sanity cheacks and tests
     def _manualEncoding(self,inp):
         inp=inp.squeeze()
         agmax=np.unravel_index(inp.argmax(), inp.shape)
@@ -56,6 +46,7 @@ class Network(nn.Module):
         if(agmax[1]==0):
             ret[3]=1
         return torch.tensor(ret)
+    #helper functions
     def _calcAvgPoolOutObj(self,in_size,pool_layer):
 
         kernal_size=pool_layer.kernel_size
@@ -144,7 +135,7 @@ class Network(nn.Module):
 
         return out_size
 
-
+#main RL class
 class drone_brain():
 
 
@@ -444,7 +435,7 @@ class drone_brain():
         
         return (((next_state.goalDistFromStart-next_state.goalDist)/next_state.goalDistFromStart)*0-(dist*0.75)+(dist_min*0.25)+(10 if next_state.is_sucesssful else 0) + (-6 if next_state.has_crashed else 0))
     
-    
+    #alias for optimizer.zero_grad()
     def zerograd(self):    
         self.optimizer.zero_grad()
 
@@ -456,22 +447,21 @@ class drone_brain():
         self.optimizer.zero_grad()
         
         discounted=self.calc_discounted(0.1)
-        #print(self.rewards[1],discounted[1])
         loss=self.calcLoss(self.action_probs,discounted)
-        #print("loss "+str(loss))
         loss.backward()
-        #torch.nn.utils.clip_grad_norm(self.net.parameters(),0.5)
         self.optimizer.step()
 
         #log rewards for this epoch and clear memeory
         self.lifetime_rewards.append(self.rewards)
         self.rewards=[]
         self.action_probs=[]
+        
         #decay explore
         self.explore_factor-=self.explore_decay
         self.explore_factor=max(self.explore_factor,self.explore_min)
         return loss.item()
-    
+        
+    #log rewards and clear memory without preforming backprop
     def noLearn(self):
         self.lifetime_rewards.append(self.rewards)
         self.rewards=[]
@@ -481,16 +471,11 @@ class drone_brain():
     
     #calculate loss
     def calcLoss(self,action_likleyhoods,rewards):
-        #-mean(log(chances of choosing what we chose)*rewards(discounted))
         loss=[]
         
         for probs,reward in zip(action_likleyhoods,rewards):
-            #loss.append((-torch.mean(torch.log(probs)*reward)).reshape(1))
             loss.append(torch.log(probs)*reward)
         loss=torch.stack(loss)
-
-        #loss=torch.nn.functional.sigmoid(loss)
-        #loss=loss/4
 
         return -torch.mean(loss)
 
@@ -510,7 +495,8 @@ class drone_brain():
             dict(net=self.net.state_dict(),explore_chance=self.explore_factor,epochs_left=epoch),
             path
         )
-        #print("backup created")
+
+    #load a model from file
     def load(self,path):
         dat=torch.load(path)
         self.explore_factor=dat["explore_chance"]
@@ -528,10 +514,12 @@ class drone_brain():
         map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, -1, 0, 0, 0, 0]),3:np.array([0, 0, 1, 0, 0, 0]),4:np.array([0, 0, -1, 0, 0, 0]),5:np.array([-1, 0, 0, 0, 0, 0]),6:np.array([1, 0, 0, 0, 0, 0]),7:np.array([0, 0, 0, 0, 0, 0])}
        
         return map[chosenAction.item()+1]
+    #variation of classDecode
     def classDecodeExpiramntal2(self,chosenAction): #chosen action: number in range 1-13 #no backwards movement
         map ={1:np.array([0, 1, 0, 0, 0, 0]),2:np.array([0, 0, 1, 0, 0, 0]),3:np.array([0, 0, -1, 0, 0, 0]),4:np.array([-1, 0, 0, 0, 0, 0]),5:np.array([1, 0, 0, 0, 0, 0]),6:np.array([0, 0, 0, 0, 0, 0])}
        
         return map[chosenAction.item()+1]
+    #variation of classDecode
     def classDecodeLRFlipped(self,chosenAction): #chosen action: number in range 1-13 #no backwards movement
         map ={1:np.array([0, 0, 0, 0, 0, 0]),2:np.array([0, 0, 1, 0, 0, 0]),3:np.array([0, 0, -1, 0, 0, 0]),5:np.array([-1, 0, 0, 0, 0, 0]),4:np.array([1, 0, 0, 0, 0, 0]),6:np.array([0, 0, 0, 0, 0, 0])}
        
