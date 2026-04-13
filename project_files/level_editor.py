@@ -10,7 +10,7 @@ from rich.progress import Progress, MofNCompleteColumn , TextColumn, BarColumn
 print("sanity check")
 loadPrcFileData("", "win-size 600 600")#set window size
 
-
+#Create base level manually
 drone=Drone()
 engine=Engine(drone,debugCam=False,sensor_range=50,Fov=60)
 
@@ -18,10 +18,8 @@ base_scene =Scene()
 testModule= Module()
 
 base_scene.setStartPos(np.array([0,-5,0]))
-#drone.setPos(np.array([0,-5,0]))
-#wall=Wall(np.array([10,0,0]))
 base_scene.setStartRot(np.array([0,0,0]))
-#drone.setRot(np.array([0,0,0]))
+
 
 wall=Wall(np.array([10,100,1]))
 wall.setPos(np.array([0,-10,0]))
@@ -62,7 +60,7 @@ testModule._unpackJson(json.loads(f.read()))
 f.close()
 base_scene.addModule(testModule)
 
-#engine.addObstacle(obs,True)
+
 scene=Scene()
 
 """scene.setGoal(np.array([10,10,10]))
@@ -72,41 +70,20 @@ f.close()
 scene.addModule(testModule)"""
 
 
-#drone.setPos(np.array([0,-15,0]))
-
-#engine.addWall(wall)
-#engine.addObstacle(obstacle)
-
-#engine.registerWalls()
-#engine.registerObstacles()
-
-
-
-#engine.loadScene(scene1,debug=True)
-#engine.unloadScene()
-
 engine.renderFrame()
-
-
-#engine.addObstacle(obs,showCollider=True)
-#engine.setGoalRender(True) #<- rendering the goal is now off by defult for preformance reasons
 
 #engine.addRuler(20)
 
 SENSOR_DATA_SIZE=[600,600]
 
-#brain=drone_brain(explore_factor=0.4,explore_decay=0.01,explore_min=0.05,lr=0.1,input_size=SENSOR_DATA_SIZE)
-#best_reward=-2
-#rando,names = compile_random_scene("level_modules",3)
-#torch.autograd.set_detect_anomaly(True)
-#engine.lazyLoadScene(base_scene,debug=False)
 def gameLoop(engine,brain):
+    #load Scene
     engine.loadScene(base_scene,debug=False)
     engine.drone.setPos(np.array([5,0,5]))
-    #engine.goal=np.array([0,100,0])
-    #engine.drone.setPos(np.array([6,3,6]))
+    
     stop = False
     undoDelay=False
+    #main loop
     while not stop:
         engine.tick()
         engine.updateCam()
