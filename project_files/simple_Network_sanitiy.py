@@ -9,6 +9,7 @@ import math
 #import tensordict
 
 import numpy as np
+#the network
 class Network(nn.Module):
     def __init__(self,inChannels,outDims,input_size):
         super().__init__()
