@@ -19,31 +19,12 @@ engine=Engine(drone,debugCam=False,sensor_range=FAR_DIST,Fov=60)
 
 LEVEL_LENGTH=1
 
-#scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)#generate random level
+scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)#generate random level
 
-scene1,modules=compile_scene(["L_top_right.txt"],"level_modules")
-
-
-#drone.setPos(np.array([0,-15,0]))
-
-#engine.addWall(wall)
-#engine.addObstacle(obstacle)
-
-#engine.registerWalls()
-#engine.registerObstacles()
-
-
-
-#engine.loadScene(scene1,debug=True)
-#engine.unloadScene()
+#scene1,modules=compile_scene(["L_top_right.txt"],"level_modules")#generate fixed level - for debug
 
 engine.renderFrame()
 
-
-#engine.addObstacle(obs,showCollider=True)
-#engine.setGoalRender(True) #<- rendering the goal is now off by defult for preformance reasons
-
-#engine.addRuler(20)
 
 SENSOR_DATA_SIZE=(600,600)
 #orgenaisation, to be changed for each run
@@ -93,7 +74,7 @@ def save_rewards(path):
     f.write(json.dumps(rewards))
     f.close()
 
-#create drone_braine object
+#create drone_brain object
 brain=drone_brain(explore_factor=1,explore_decay=0,explore_min=0,lr=0.1,input_size=SENSOR_DATA_SIZE,far_dist=FAR_DIST,near_dist=engine.getNear())
 best_reward=2
 
@@ -107,7 +88,6 @@ losses=[]
 def gameLoop(engine,brain,epoch):
     #setup
     engine.loadScene(scene1,debug=False)
-    #engine.drone.setPos(np.array([4,0,4]))
     start_pos=np.random.uniform(low=3,high=7,size=(3))
     engine.drone.setPos(start_pos)
     stop = False
@@ -116,7 +96,7 @@ def gameLoop(engine,brain,epoch):
     dobreak=False
     override_counter=0
     timer=1e5
-    #brain.zerograd()
+    #main loop
     while not stop and timer >=0:
         #update everything
         engine.tick()
@@ -130,7 +110,7 @@ def gameLoop(engine,brain,epoch):
         if(has_coll):
             #print("crash!")
             stop=True
-
+        #cheack for game end
         if engine.getGoalDist() <=0:
             print("Success!")
             stop=True
@@ -139,10 +119,8 @@ def gameLoop(engine,brain,epoch):
         #generate state object from game data
         currState=State(engine.getDepthBuffer(*SENSOR_DATA_SIZE),has_coll,engine.getGoalDist() <=0,engine.getGoalDist(),engine.getGoalDistFromStart())
         reward=brain.analize_stateV6(currState)
-        #best_reward=max(best_reward,reward)
-        #tmp=simulate_network(engine) #network interface here
         tmp,disp=brain.act(currState,False) #predict best move
-        override_counter+=1
+        override_counter+=1#incrament counter
         tmp=tmp.squeeze()
         #display depth buffer
         if(startMover(engine)): 
@@ -150,7 +128,7 @@ def gameLoop(engine,brain,epoch):
             plt.imshow(currState.sensorDat,cmap="Greys")
             plt.show()
 
-        #input for terminating traning
+        #input for terminating training
         if(earlystop(engine)):
             pause=hideBar(bar)
             next(pause)
@@ -171,7 +149,7 @@ def gameLoop(engine,brain,epoch):
         pred_disp=[round(elm,4) for elm in pred_disp]
         bar.update(bar_task,advance=0,curr_reward=round(reward,4),last_pred=pred_disp)
         timer-=1
-        #time.sleep(0.016666)
+        #time.sleep(0.016666)#limit update rate to 60 fps
     #save stuff
     brain.save(RUN_IDETIFIER+r"/model",epoch)
     f=open(RUN_IDETIFIER+r"/module_list","w")
@@ -194,7 +172,6 @@ levels_beaten=0
 tries=0
 avg_tries=0
 best_score_display=TextColumn("Best Reward: {task.fields[best_reward]}")
-#explore_factor_display=TextColumn("Explore Factor: {task.fields[explore_factor]}")
 current_score_display=TextColumn("Current Reward: {task.fields[curr_reward]}")
 levels_beaten_display=TextColumn("levels beaten: {task.fields[levels_beaten]}")
 avg_tries_display=TextColumn("time since last win: {task.fields[avg_tries]}")
@@ -218,13 +195,13 @@ bar_task=bar.add_task("training...",total=epochs,curr_reward="N/A",levels_beaten
 bar.start()
 new_counter=3
 time_since_last=0
-
+#document levels generated
 generated_levels=[]
 generated_levels.append(modules)
 
 #training loop
 for epoch in range(epochs-start_epoch):
-    generate_new,dobreak=gameLoop(engine,brain,epochs-epoch)#run epoch
+    generate_new,dobreak=gameLoop(engine,brain,epochs-epoch)#run training episode
     #update info display
     best_reward=min(best_reward,min(brain.lifetime_rewards[-1]))
     bar.update(bar_task,advance=1,curr_reward=brain.lifetime_rewards[-1],levels_beaten=levels_beaten,avg_tries=time_since_last)
@@ -238,13 +215,12 @@ for epoch in range(epochs-start_epoch):
         best_reward=0
         levels_beaten+=1
         time_since_last=0
-        #tries=0
+        
     #generate new scene if network has succeeded.
     if (generate_new ):
-        #scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
         generated_levels.append(modules)
         scene1,modules=compile_scene(["L_top_right.txt"],"level_modules")
-        #new_counter=1
+        
     #terminate traning if needed
     if dobreak:
         was_terminted=f"\ntraining was terminated at epoch {epoch} / {epochs}."
@@ -274,7 +250,7 @@ plt.plot(rewards)
 plt.savefig(RUN_IDETIFIER+"/reward_graph.svg",format='svg')
 plt.show()
 
-
+#plot loss graph
 plt.plot(losses)
 plt.savefig(RUN_IDETIFIER+"/loss_graph.svg",format='svg')
 plt.show()
