@@ -24,6 +24,7 @@ from abc import ABC,abstractmethod
 
 from Obstacles import *
 
+#Player class
 class Drone:
 
 	position=np.array([0,0,0])
@@ -94,7 +95,7 @@ class Drone:
 		self.rotation=rot
 
 
-
+#a static rectangle with collision
 class Wall():
 	def __init__(self, dims : np.array):
 		if(dims.shape != (3,)):
@@ -131,7 +132,7 @@ class Wall():
 		self.collNode=CollisionNode("wall")
 		self.collNode.addSolid(CollisionBox(LPoint3f(*(self.scale/2)),*(self.scale/2)))#create collider (0,0) at corner
 
-
+#a collection of walls
 class Module:
 	def __init__(self):
 		self.obstacles=[]
@@ -180,7 +181,7 @@ class Module:
 			self.obstacles[-1]._jsonLod(x)
 
 		self.offset=np.array(dict["offset"])
-
+#a collection of all loaded objects
 class Scene:
 	def __init__(self):
 		self.walls=[]
@@ -231,7 +232,7 @@ class Scene:
 
 
 
-
+#handles all game logic
 class Engine(ShowBase):
 	def __init__(self,drone : Drone, sensor_range=50,Fov=30,debugCam=False):
 		ShowBase.__init__(self)
@@ -319,7 +320,7 @@ class Engine(ShowBase):
 		self.devPos=np.array([0,0,0])
 		self.devInput.hide()
 		self.devInputPos.hide()
-	
+	#get near value
 	def getNear(self):
 		return self.cam.node().getLens().getNear()
 
@@ -353,7 +354,7 @@ class Engine(ShowBase):
 		if showCollider:
 			coll.show()
 
-	#registes an obstacle (dynamic object), unused
+	#registes an obstacle (dynamic object), deprecated
 	def addObstacle(self,obstacle : Obstacle,showCollider=False):
 		self.obstaclesObj.append(obstacle)
 		self.obstacles.append(self.loader.loadModel(modelPath="models/box"))
@@ -373,7 +374,7 @@ class Engine(ShowBase):
 		if showCollider:
 			coll.show()
 
-	#sets the goal, comented out code for rendring the goal for preformence reasons.
+	#sets the goal, comented out rendring code for preformence reasons.
 	def addGoal(self,pos : np.array,doesRender=False):
 		self.goal=pos
 		"""self.goalRender=self.loader.loadModel(modelPath="models/box")
@@ -404,8 +405,7 @@ class Engine(ShowBase):
 	#update stuff
 	def tick(self):
 		self.drone.sync()
-		#drone.move(np.array([0,0.1,0]))
-		#update dynamic objects(unused)
+		#update dynamic objects(deprecated)
 		for x in self.obstaclesObj:
 			x.onTick()
 			self.obstacles[x._id].setScale(*x.scale)
@@ -413,11 +413,11 @@ class Engine(ShowBase):
 			self.obstacles[x._id].setHpr(*x.rotaion)
 			x._coll.setPos(*x.position)
 
-	#raise a flag
+	#raise collision flag
 	def raiseCollFlag(self,entry):
 		self.collFlag=True
 	
-	#return true if a collision acurred between the drone and something
+	#return true if a collision acurred between the drone and something, and resets the flag
 	def cheackCollision(self):
 		if(self.collFlag):
 			self.collFlag=False
@@ -436,10 +436,6 @@ class Engine(ShowBase):
 
 	#returns the depth buffer of the last frame rendered, scaled to given size
 	def getDepthBuffer(self,width=-1,hight=-1):
-		#render scene witout goal
-		#self.goalRender.detachNode()
-		#self.renderFrame()
-		#self.goalRender.reparentTo(self.render)
 
 		data = self.depthTex.getRamImage()
 		depth_image = np.frombuffer(data, np.float32)
@@ -502,10 +498,10 @@ class Engine(ShowBase):
 		self.drone.setPos(np.array([0,0,0]))
 		self.drone.setRot(np.array([0,0,0]))
 		self.goal=np.array([0,0,0])
-
+	#return player distance to goal
 	def getGoalDist(self):
 		return (-self.drone.position[1]+self.goal[1])
-
+	#return goal distance from start
 	def getGoalDistFromStart(self):
 		return (self.goal[1]-self.scene.startPos[1])
 
@@ -519,8 +515,6 @@ class Engine(ShowBase):
 		for x in sanetised.split(","):
 			out.append(int(x))
 
-		#wall=Wall(np.array(out))
-		#wall.setPos(np.array([0,0,0]))
 		self.devPos=np.array(out)
 
 		self.setDevTools(False)
@@ -571,7 +565,6 @@ class Engine(ShowBase):
 	
 #debug tool, allows for keyboard control
 def simulate_network(engine):
-		#inp=input("enter input:")
 		is_down = engine.mouseWatcherNode.is_button_down
 
 		if(is_down(KeyboardButton.ascii_key('w'))):
@@ -619,7 +612,7 @@ def earlystop(engine):
 	is_down = engine.mouseWatcherNode.is_button_down
 	return is_down(KeyboardButton.ascii_key("-"))
 
-#generate a random scene from x modules
+#generate a random scene from n modules
 def compile_random_scene(directory,module_num=3):
 	ret=Scene()
 	ret.addModule(loadModule(directory+r"/base.txt"))
@@ -652,7 +645,7 @@ def compile_random_scene(directory,module_num=3):
 	return ret,names
 
 #create a scene from a list of modules
-def compile_scene(module_name_list,directory): #TODO <-finish this
+def compile_scene(module_name_list,directory): 
 	ret=Scene()
 	ret.addModule(loadModule(directory+r"/base.txt"))
 
@@ -660,8 +653,9 @@ def compile_scene(module_name_list,directory): #TODO <-finish this
 
 	candidates=os.listdir(directory)
 
+	#exclude base module (and the broken mid_hole) from being selected 
 	candidates.remove("base.txt")
-	candidates.remove("mid_hole.txt")#TODO fix mid_hole module
+	candidates.remove("mid_hole.txt")
 
 	names=[]
 
