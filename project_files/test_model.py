@@ -18,29 +18,8 @@ LEVEL_LENGTH=1
 scene1,modules=compile_random_scene("level_modules",LEVEL_LENGTH)
 scene1,modules=compile_scene(["L_top_right.txt"],"level_modules")
 
-
-
-
-#drone.setPos(np.array([0,-15,0]))
-
-#engine.addWall(wall)
-#engine.addObstacle(obstacle)
-
-#engine.registerWalls()
-#engine.registerObstacles()
-
-
-
-#engine.loadScene(scene1,debug=True)
-#engine.unloadScene()
-
 engine.renderFrame()
 
-
-#engine.addObstacle(obs,showCollider=True)
-#engine.setGoalRender(True) #<- rendering the goal is now off by defult for preformance reasons
-
-#engine.addRuler(20)
 
 SENSOR_DATA_SIZE=(600,600)
 
@@ -57,8 +36,6 @@ losses=[]
 
 def gameLoop(engine,brain,epoch):
     engine.loadScene(scene1,debug=False)
-    #engine.drone.setPos(np.array([6,0,6]))
-    #engine.drone.setPos(np.array([6,3,6]))
     start_pos=np.random.uniform(low=3,high=7,size=(3))
     engine.drone.setPos(start_pos)
     stop = False
