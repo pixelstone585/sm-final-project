@@ -3,6 +3,7 @@ from abc import ABC,abstractmethod
 from panda3d.core import GraphicsPipe, GraphicsOutput, GraphicsBuffer, Texture, FrameBufferProperties, WindowProperties,GraphicsEngine,CollisionTraverser,CollisionNode,CollisionSphere,CollisionBox,PNMImage, Texture,KeyboardButton,TexturePool,CollisionHandlerQueue
 from panda3d.core import LPoint3f, CollisionHandlerPusher
 #class for dynamic objects, unused
+#THIS FILE IS DEPRECATED! DO NOT USE!
 class Obstacle(ABC):
 
     def __init__(self, dims: np.array =np.array([1,1,1])):
