@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://c8ou74y8h8ch7"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6e123"]
+
+[node name="Node3D" type="Area3D" unique_id=316299939]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=761895190]
+shape = SubResource("BoxShape3D_6e123")

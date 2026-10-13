@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://i5i4m0soaek7"]
+
+[ext_resource type="Script" uid="uid://dxm0y40ww4srf" path="res://Scripts/Projectile.cs" id="1_a85iw"]
+
+[sub_resource type="Gradient" id="Gradient_f8cdk"]
+offsets = PackedFloat32Array(0, 0.24637681, 0.8043478, 1)
+colors = PackedColorArray(0.84705883, 0.47058824, 0, 0, 0.84705883, 0.47058824, 0, 1, 1, 0.7882353, 0.24705882, 1, 1, 0.7882353, 0.24705882, 0)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_yr2qt"]
+gradient = SubResource("Gradient_f8cdk")
+height = 256
+fill_from = Vector2(0.5, 1)
+fill_to = Vector2(0.5, 0)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tl4hk"]
+albedo_texture = SubResource("GradientTexture2D_yr2qt")
+emission_enabled = true
+emission_texture = SubResource("GradientTexture2D_yr2qt")
+
+[sub_resource type="RibbonTrailMesh" id="RibbonTrailMesh_d4467"]
+material = SubResource("StandardMaterial3D_tl4hk")
+size = 0.005
+sections = 2
+section_segments = 1
+
+[node name="Projectile" type="Node3D" unique_id=1500001230]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 0, 0)
+script = ExtResource("1_a85iw")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=900780077]
+transform = Transform3D(1, -8.742278e-08, 8.742278e-08, 8.742278e-08, -4.371139e-08, -1, 8.742278e-08, 1, -4.371138e-08, 0, 0, 0.2)
+mesh = SubResource("RibbonTrailMesh_d4467")

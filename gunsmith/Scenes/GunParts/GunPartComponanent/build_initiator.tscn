@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://6fpyp1nl3kvw"]
+
+[ext_resource type="Script" uid="uid://c32dmgpdxxoxc" path="res://Scripts/GunParts/BuildInitiator.cs" id="1_73x2w"]
+
+[node name="BuildInitiator" type="Node3D" unique_id=560429781 node_paths=PackedStringArray("Connectors")]
+script = ExtResource("1_73x2w")
+Connectors = []

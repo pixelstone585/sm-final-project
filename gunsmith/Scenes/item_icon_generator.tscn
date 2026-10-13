@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://c6lhjgv8kio1a"]
+
+[ext_resource type="Script" uid="uid://bqrvb13mhprh" path="res://Scripts/ItemIconGenerator.cs" id="1_f4nql"]
+
+[node name="ItemIconGenerator" type="SubViewport" unique_id=1617339975]
+own_world_3d = true
+script = ExtResource("1_f4nql")
+
+[node name="Cam" type="Camera3D" parent="." unique_id=239446703]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0, 0, 2.5)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2050844640]
+transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 3, 3)

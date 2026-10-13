@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://dfeu15t8bpnux"]
+
+[ext_resource type="Script" uid="uid://dno1qju5ehvqk" path="res://Scripts/GunParts/LightConvayer.cs" id="1_juf6k"]
+[ext_resource type="PackedScene" uid="uid://b8kafrquu8oe7" path="res://Scenes/GunParts/GunPartComponanent/connector.tscn" id="2_ielp8"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_330bu"]
+albedo_color = Color(1, 0.40784314, 0.28235295, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_1mc0w"]
+material = SubResource("StandardMaterial3D_330bu")
+size = Vector3(2, 1, 1)
+
+[node name="LightConvayer" type="Node3D" unique_id=1300351694]
+script = ExtResource("1_juf6k")
+TopLeftPosition = Vector3(-0.5, 0, 0)
+
+[node name="Pivot" type="Node3D" parent="." unique_id=1236713191]
+
+[node name="Mesh" type="MeshInstance3D" parent="Pivot" unique_id=412524643]
+mesh = SubResource("BoxMesh_1mc0w")
+
+[node name="AmmoConnector" parent="Pivot/Mesh" unique_id=1053808450 instance=ExtResource("2_ielp8")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, -0.5, 0)
+
+[node name="AmmoConnector2" parent="Pivot/Mesh" unique_id=445134569 instance=ExtResource("2_ielp8")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.5, 0)

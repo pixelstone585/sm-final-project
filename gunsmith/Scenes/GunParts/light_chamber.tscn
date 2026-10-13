@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://dnub3bga6udmm"]
+
+[ext_resource type="Script" uid="uid://etxlxlf5r53r" path="res://Scripts/GunParts/LightChamber.cs" id="1_nbdek"]
+[ext_resource type="PackedScene" uid="uid://b8kafrquu8oe7" path="res://Scenes/GunParts/GunPartComponanent/connector.tscn" id="2_nbdek"]
+[ext_resource type="PackedScene" uid="uid://6fpyp1nl3kvw" path="res://Scenes/GunParts/GunPartComponanent/build_initiator.tscn" id="3_nbdek"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_huokd"]
+albedo_color = Color(1, 0.84705883, 0.16470589, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_nbdek"]
+material = SubResource("StandardMaterial3D_huokd")
+size = Vector3(2, 1, 1)
+
+[node name="LightChamber" type="Node3D" unique_id=824196650 node_paths=PackedStringArray("Pivot") groups=["Chamber"]]
+script = ExtResource("1_nbdek")
+TopLeftPosition = Vector3(-0.5, 0, 0)
+BoundingBoxSize = Vector3(2, 2, 0)
+Pivot = NodePath("Pivot")
+
+[node name="Pivot" type="Node3D" parent="." unique_id=756066331]
+
+[node name="PartMesh" type="MeshInstance3D" parent="Pivot" unique_id=816102666]
+mesh = SubResource("BoxMesh_nbdek")
+
+[node name="AmmoConnector" parent="Pivot/PartMesh" unique_id=1053808450 instance=ExtResource("2_nbdek")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0.5, 0)
+
+[node name="LBarrelConnector" parent="Pivot/PartMesh" unique_id=419557332 instance=ExtResource("2_nbdek")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -1, 0, 0)
+Type = 3
+
+[node name="BuildInitiator" parent="." unique_id=560429781 node_paths=PackedStringArray("Connectors") instance=ExtResource("3_nbdek")]
+Connectors = [NodePath("../Pivot/PartMesh/AmmoConnector"), NodePath("../Pivot/PartMesh/LBarrelConnector")]

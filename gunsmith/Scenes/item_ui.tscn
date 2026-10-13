@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://dn2ec43dw8w7x"]
+
+[ext_resource type="Script" uid="uid://bymnbq6ynsaly" path="res://Scripts/ItemUi.cs" id="1_0ievn"]
+[ext_resource type="Texture2D" uid="uid://q7wpg20walgi" path="res://icon.svg" id="1_p3smd"]
+
+[node name="ItemUi" type="Control" unique_id=1955620734]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 95.0
+offset_bottom = 124.0
+script = ExtResource("1_0ievn")
+
+[node name="Container" type="VBoxContainer" parent="." unique_id=763021678]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -0.5
+offset_bottom = 2.5
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PartImage" type="TextureRect" parent="Container" unique_id=1176030245]
+layout_mode = 2
+texture = ExtResource("1_p3smd")
+expand_mode = 5
+stretch_mode = 4
+
+[node name="PartName" type="Label" parent="Container" unique_id=1028798556]
+layout_mode = 2
+text = "Name"
+horizontal_alignment = 1
