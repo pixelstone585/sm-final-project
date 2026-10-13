@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://0mkr5w2akmhm"]
+
+[ext_resource type="Script" uid="uid://dxf6loorjhlnn" path="res://Scripts/Weapon.cs" id="1_er6cq"]
+[ext_resource type="PackedScene" uid="uid://l8ko3rn2am68" path="res://Scenes/muzzle_flash.tscn" id="2_qv81b"]
+[ext_resource type="Script" uid="uid://drvrspst5p3x4" path="res://Scripts/FiringPipeLine.cs" id="3_e1ly8"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_er6cq"]
+albedo_color = Color(0, 0, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_qv81b"]
+material = SubResource("StandardMaterial3D_er6cq")
+size = Vector3(0.25, 0.25, 1)
+
+[node name="Weapon" type="Node3D" unique_id=1923408279]
+script = ExtResource("1_er6cq")
+MuzzlePos = Vector3(0, 0, -0.6)
+BarrelDirection = Vector3(0, 0, -1)
+
+[node name="WeaponModel" type="MeshInstance3D" parent="." unique_id=793581012]
+mesh = SubResource("BoxMesh_qv81b")
+
+[node name="MuzzleFlash" parent="." unique_id=1190076942 instance=ExtResource("2_qv81b")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.6)
+
+[node name="TestingPipeLine" type="Node3D" parent="." unique_id=276844361]
+script = ExtResource("3_e1ly8")
+FireMode = 2
+IsValid = true

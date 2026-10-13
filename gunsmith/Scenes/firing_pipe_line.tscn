@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://brnasm4a6r08b"]
+
+[ext_resource type="Script" uid="uid://drvrspst5p3x4" path="res://Scripts/FiringPipeLine.cs" id="1_xdw4m"]
+
+[node name="FiringPipeLine" type="Node3D" unique_id=1846775388]
+script = ExtResource("1_xdw4m")

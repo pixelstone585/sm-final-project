@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://dj2muwn8svdxc"]
+
+[ext_resource type="Texture2D" uid="uid://dokvem0virgad" path="res://Assets/SlotBorder.png" id="1_xqqjp"]
+[ext_resource type="Script" uid="uid://bqgnp77erw2g3" path="res://Scripts/PartGrid.cs" id="2_w2vec"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_xqqjp"]
+
+[node name="PartGrid" type="Sprite3D" unique_id=662762306]
+centered = false
+texture = ExtResource("1_xqqjp")
+region_enabled = true
+region_rect = Rect2(0, 0, 64, 64)
+script = ExtResource("2_w2vec")
+
+[node name="GridArea" type="Area3D" parent="." unique_id=834460438]
+collision_layer = 32768
+collision_mask = 32768
+
+[node name="GridCollisionShape" type="CollisionShape3D" parent="GridArea" unique_id=1152739627]
+shape = SubResource("BoxShape3D_xqqjp")

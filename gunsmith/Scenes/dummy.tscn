@@ -1,0 +1,34 @@
+[gd_scene format=3 uid="uid://bt6jff3sehmqu"]
+
+[ext_resource type="Script" uid="uid://b3yf2hvy41s6m" path="res://Scripts/General Scripts/HitBox.cs" id="1_x66xh"]
+[ext_resource type="Script" uid="uid://be3b8xpqt166l" path="res://Scripts/General Scripts/HpTracker.cs" id="2_5d6mj"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5d6mj"]
+albedo_color = Color(1, 0.08627451, 0.1764706, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_5d6mj"]
+material = SubResource("StandardMaterial3D_5d6mj")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_s0uyp"]
+size = Vector3(1, 2, 1)
+
+[node name="Dummy" type="Node3D" unique_id=2100933477]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=528178473]
+mesh = SubResource("CapsuleMesh_5d6mj")
+
+[node name="HitBox" type="Area3D" parent="." unique_id=2137926617]
+script = ExtResource("1_x66xh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HitBox" unique_id=1031006904]
+shape = SubResource("BoxShape3D_s0uyp")
+
+[node name="Label3D" type="Label3D" parent="." unique_id=1515881776]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+billboard = 2
+text = "HP Text"
+
+[node name="HPTracker" type="Node3D" parent="." unique_id=819105161 node_paths=PackedStringArray("Label", "LinkedHitBox")]
+script = ExtResource("2_5d6mj")
+Label = NodePath("../Label3D")
+LinkedHitBox = NodePath("../HitBox")

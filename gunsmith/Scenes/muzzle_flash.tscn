@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://l8ko3rn2am68"]
+
+[sub_resource type="Curve" id="Curve_er6cq"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_qv81b"]
+curve = SubResource("Curve_er6cq")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_er6cq"]
+angle_min = 1.0728835e-05
+angle_max = 360.00003
+gravity = Vector3(0, 0, 0)
+alpha_curve = SubResource("CurveTexture_qv81b")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_e1ly8"]
+transparency = 1
+cull_mode = 2
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 0.8117647, 0, 0.7294118)
+
+[sub_resource type="QuadMesh" id="QuadMesh_l036s"]
+material = SubResource("StandardMaterial3D_e1ly8")
+size = Vector2(0.5, 0.5)
+orientation = 0
+
+[node name="MuzzleFlash" type="GPUParticles3D" unique_id=1190076942]
+emitting = false
+lifetime = 0.060000000000000005
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_er6cq")
+draw_pass_1 = SubResource("QuadMesh_l036s")

@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://c61bxm57ovw0a"]
+
+[ext_resource type="Script" uid="uid://cds5lv3abt702" path="res://Scripts/GunParts/BarrelPart.cs" id="1_m6gxx"]
+[ext_resource type="PackedScene" uid="uid://b8kafrquu8oe7" path="res://Scenes/GunParts/GunPartComponanent/connector.tscn" id="2_khfwi"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_q6eks"]
+albedo_color = Color(0.32941177, 1, 1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ew1tx"]
+material = SubResource("StandardMaterial3D_q6eks")
+
+[node name="BarrelPart" type="Node3D" unique_id=739977405]
+script = ExtResource("1_m6gxx")
+
+[node name="Pivot" type="Node3D" parent="." unique_id=588173853]
+
+[node name="Mesh" type="MeshInstance3D" parent="Pivot" unique_id=1648840686]
+mesh = SubResource("BoxMesh_ew1tx")
+
+[node name="BarrelConnector" parent="Pivot/Mesh" unique_id=1053808450 instance=ExtResource("2_khfwi")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, -0.5, 0, 0)
+Type = 3
+
+[node name="BarrelConnector2" parent="Pivot/Mesh" unique_id=35214405 instance=ExtResource("2_khfwi")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0.5, 0, 0)
+Type = 3

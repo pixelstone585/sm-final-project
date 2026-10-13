@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://dyb67wd3n5p8x"]
+
+[ext_resource type="Script" uid="uid://vxfik5dch8mp" path="res://Scripts/PlayerBean.cs" id="1_f03au"]
+[ext_resource type="PackedScene" uid="uid://0mkr5w2akmhm" path="res://Scenes/weapon.tscn" id="2_d86tk"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_eysms"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_f03au"]
+size = Vector3(1, 2.0129242, 1)
+
+[node name="Player" type="CharacterBody3D" unique_id=1988208691]
+script = ExtResource("1_f03au")
+FallAcc = 14
+JumpStrength = 5
+
+[node name="Pivot" type="Node3D" parent="." unique_id=1602980408]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Pivot" unique_id=382083558]
+mesh = SubResource("CapsuleMesh_eysms")
+
+[node name="PlayerCam" type="Camera3D" parent="Pivot" unique_id=1751374893]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.47375697, 0)
+
+[node name="Weapon" parent="Pivot" unique_id=1923408279 node_paths=PackedStringArray("ProjectileSpawnerNode") instance=ExtResource("2_d86tk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5571861, 0.21202514, -0.75755787)
+ProjectileSpawnerNode = NodePath("../PlayerCam")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=383364049]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.0035934448, 0)
+shape = SubResource("BoxShape3D_f03au")

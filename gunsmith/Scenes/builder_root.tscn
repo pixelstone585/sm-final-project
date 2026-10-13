@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://bhijidpncjg7w"]
+
+[ext_resource type="Script" uid="uid://bbwo5khsl1ive" path="res://Scripts/BuilderRoot.cs" id="1_kq6jb"]
+[ext_resource type="ArrayMesh" uid="uid://dcmx3whbetfp6" path="res://Assets/Placeholder_shell.obj" id="1_x5hab"]
+[ext_resource type="PackedScene" uid="uid://dj2muwn8svdxc" path="res://Scenes/part_grid.tscn" id="2_8wsxf"]
+[ext_resource type="Script" uid="uid://cxqcbs4javtep" path="res://Scenes/BuilderCam.cs" id="3_70c37"]
+[ext_resource type="Script" uid="uid://c0hu8f3x2a2n8" path="res://Scripts/WeaponPartContainer.cs" id="3_ftqtq"]
+[ext_resource type="PackedScene" uid="uid://dn2ec43dw8w7x" path="res://Scenes/item_ui.tscn" id="4_b3ku6"]
+[ext_resource type="PackedScene" uid="uid://b8kafrquu8oe7" path="res://Scenes/GunParts/GunPartComponanent/connector.tscn" id="5_32pug"]
+
+[node name="BuilderRoot" type="Node3D" unique_id=435474112]
+script = ExtResource("1_kq6jb")
+
+[node name="BuilderCam" type="Camera3D" parent="." unique_id=268732574]
+transform = Transform3D(-1, 8.742278e-08, 3.821371e-15, 0, -4.371139e-08, 1, 8.742278e-08, 1, 4.371139e-08, 0, 4.5, 0)
+cull_mask = 1047554
+script = ExtResource("3_70c37")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1791800954]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 0, 7, 0)
+layers = 2
+
+[node name="ItemUi" parent="." unique_id=1955620734 instance=ExtResource("4_b3ku6")]
+JsonPath = "res://Assets/PartItems/LightChamberJson.json"
+
+[node name="ItemUi2" parent="." unique_id=1868865368 instance=ExtResource("4_b3ku6")]
+offset_top = 122.0
+offset_bottom = 246.0
+JsonPath = "res://Assets/PartItems/TestItemJson.json"
+
+[node name="WeaponPartContainer" type="Node3D" parent="." unique_id=1590312814 node_paths=PackedStringArray("MagConnector", "BarrelConnector")]
+script = ExtResource("3_ftqtq")
+MagConnector = NodePath("AmmoConnector")
+BarrelConnector = NodePath("BBarrelConnector")
+
+[node name="tempShell" type="MeshInstance3D" parent="WeaponPartContainer" unique_id=165990337]
+layers = 2
+mesh = ExtResource("1_x5hab")
+
+[node name="PartGrid" parent="WeaponPartContainer/tempShell" unique_id=662762306 node_paths=PackedStringArray("Camera", "BuildButton", "BuilderRootNode") instance=ExtResource("2_8wsxf")]
+transform = Transform3D(-1, -8.742278e-08, 3.821371e-15, 0, -4.371139e-08, -1, 8.742278e-08, -1, 4.371139e-08, 4, 0.5, 2)
+layers = 2
+pixel_size = 0.03125
+GridSize = Vector2i(8, 4)
+Camera = NodePath("../../../BuilderCam")
+BuildButton = NodePath("../../../Button")
+BuilderRootNode = NodePath("../../..")
+
+[node name="BBarrelConnector" parent="WeaponPartContainer" unique_id=1053808450 instance=ExtResource("5_32pug")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 4, 0, 1.5)
+Type = 3
+
+[node name="AmmoConnector" parent="WeaponPartContainer" unique_id=909023312 instance=ExtResource("5_32pug")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, -2)
+
+[node name="ItemUi3" parent="." unique_id=1355799648 instance=ExtResource("4_b3ku6")]
+offset_top = 263.0
+offset_bottom = 387.0
+JsonPath = "res://Assets/PartItems/LightConveyar.json"
+
+[node name="ItemUi4" parent="." unique_id=615244368 instance=ExtResource("4_b3ku6")]
+offset_top = 397.0
+offset_bottom = 521.0
+JsonPath = "res://Assets/PartItems/BarrelPart.json"
+
+[node name="Button" type="Button" parent="." unique_id=319087305]
+offset_left = 1072.0
+offset_top = 584.0
+offset_right = 1120.0
+offset_bottom = 615.0
+text = "Build"

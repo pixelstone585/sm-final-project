@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://b8kafrquu8oe7"]
+
+[ext_resource type="Script" uid="uid://dc1joy5jrfjn1" path="res://Scripts/GunParts/Connector.cs" id="1_ti6if"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_gckvi"]
+
+[node name="Connector" type="Area3D" unique_id=1053808450 node_paths=PackedStringArray("PairedConnectors")]
+transform = Transform3D(0.5, 0, 0, 0, 0.5, 0, 0, 0, 0.5, 0, 0, 0)
+script = ExtResource("1_ti6if")
+PairedConnectors = []
+
+[node name="ConectorCollider" type="CollisionShape3D" parent="." unique_id=1294870200]
+shape = SubResource("BoxShape3D_gckvi")
